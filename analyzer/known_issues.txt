@@ -1,0 +1,3 @@
+Cytoplasm Contours
+  - Poor nucleus recognition, seems to opt for high contrast protein (?) clumps instead of actual nuclei
+  - Poor initial cell segmentation

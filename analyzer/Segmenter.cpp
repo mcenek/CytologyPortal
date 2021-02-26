@@ -167,7 +167,10 @@ namespace segment {
             outimg.convertTo(outimg, CV_64FC3);
             cv::drawContours(outimg, contours, allContours, pink);
 
+
+
             cv::imwrite("../images/contours_cyto.png", outimg);
+
 
             // find convex hulls
             vector<vector<cv::Point>> hulls = runFindConvexHulls(contours);
@@ -188,8 +191,13 @@ namespace segment {
             if (gmmPredictions.empty()) {
                 gmmPredictions = runGmm(image.mat, hulls, maxGmmIterations);
                 saveMatrix("../images/gmmPredictions.yml", gmmPredictions);
-                cv::imwrite("../images/gmmPredictions.png", gmmPredictions);
+
+                cv::Mat temp;
+                cv::threshold(gmmPredictions, temp, 0, 256, CV_THRESH_BINARY);
+                cv::imwrite("../images/gmmPredictions.png", temp);
             }
+
+
 
             end = (clock() - start) / CLOCKS_PER_SEC;
             if (debug) printf("Finished with Gaussian Mixture Modeling, time: %f\n", end);
@@ -202,6 +210,10 @@ namespace segment {
             cv::drawContours(outimg, clumpBoundaries, allContours, pink, 2);
 
             cv::imwrite("../images/clump_boundaries.png", outimg);
+
+            cv::Mat test = image.mat.clone();
+            cv::drawContours(test, clumpBoundaries, allContours, 0, 2);
+            displayMatrix("out", test);
 
             // extract each clump from the original image
             image.createClumps(clumpBoundaries);
@@ -225,7 +237,9 @@ namespace segment {
             if (debug) printf("Beginning initial cell segmentation...\n");
 
 
-            runInitialCellSegmentation(&image.clumps, threshold1, threshold2, debug);
+            cv::Mat initialCells = runInitialCellSegmentation(&image, threshold1, threshold2, debug);
+            cv::imwrite("../images/initial_cell_boundaries.png", initialCells);
+
 
             end = (clock() - start) / CLOCKS_PER_SEC;
             if (debug) printf("Finished initial cell segmentation, time: %f\n", end);

@@ -120,6 +120,11 @@ namespace segment {
         cv::Mat grayscaleImg;
         img.convertTo(grayscaleImg, CV_8UC3);
         cv::cvtColor(grayscaleImg, grayscaleImg, CV_BGR2GRAY);
+
+        cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(2);
+        clahe->apply(grayscaleImg, grayscaleImg);
+
+
         grayscaleImg.convertTo(grayscaleImg, CV_64FC1);
         grayscaleImg = grayscaleImg.reshape(0, grayscaleImg.rows * grayscaleImg.cols);
 

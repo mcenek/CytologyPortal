@@ -9,93 +9,118 @@ namespace segment {
     const int allContours = -1;
     const cv::Scalar pink = cv::Scalar(1.0, 0, 1.0);
 
-    void associateClumpBoundariesWithCell(Clump *clump, int c, bool debug) {
-        clump->nucleiAssocs = cv::Mat::zeros(clump->clumpMat.rows, clump->clumpMat.cols, CV_64FC3);
+    vector<pair<Cell*, double>> findNucleiDistances(cv::Point point, Clump *clump) {
+        // find the distance to each nucleus
+        vector<pair<Cell*, double>> nucleiDistances;
+        for (unsigned int i = 0; i < clump->cells.size(); i++) {
+            Cell *cell = &clump->cells[i];
+            double distance = getDistance(point, cell->nucleusCenter);
+            nucleiDistances.push_back(pair<Cell*, double>(cell, distance));
+        }
+        return nucleiDistances;
+    }
 
-        // typedef cv::Point3_<uint8_t> Pixel;
-        // clump->nucleiAssocs.forEach<Pixel>([](Pixel &p, const int * position) -> void {
-        //     // p.x = 1.0;
-        //     // p.z = 1.0;
-        // });
+    void sortNucleiDistances(vector<pair<Cell*, double>> *nucleiDistances) {
+        // order the nuclei indices by increasing distance
+        sort(nucleiDistances->begin(), nucleiDistances->end(),
+             [=](pair<Cell*, double> &a, pair<Cell*, double> &b) {
+                 return a.second < b.second;
+             }
+        );
+    }
 
-        // printf("Clump %i, # of cells: %lu\n", c, clump->cells.size());
-
-        // debugging information
-        int numPixelsOutside = 0, numPixelsAssigned = 0, numPixelsLost = 0;
-        int pixelTotal = clump->clumpMat.rows * clump->clumpMat.cols;
-        int pixelCount = 0;
-
-        // for each pixel in the clump ...
-        for (int row = 0; row < clump->clumpMat.rows; row++) {
-            for (int col = 0; col < clump->clumpMat.cols; col++) {
-                pixelCount++;
-                // clump->nucleiAssocs.at<cv::Vec3d>(row, col) = cv::Vec3d(0, 0, 1.0);
-                // if the pixel is outside of the clump, ignore it
-                // TODO something is off here, seems like it should be row, col
-                cv::Point pixel = cv::Point(col, row);
-                if (cv::pointPolygonTest(clump->offsetContour, pixel, false) < 0) {
-                    // clump->nucleiAssocs.at<cv::Vec3d>(col, row) = cv::Vec3d(0, 1.0, 0);
-                    numPixelsOutside++; //TODO: Not currently used
-                } else {
-                    // find the distance to each nucleus
-                    vector<pair<int, double>> nucleiDistances;
-                    for (unsigned int n = 0; n < clump->cells.size(); n++) {
-                        double distance = cv::norm(pixel - clump->cells[n].nucleusCenter);
-                        nucleiDistances.push_back(pair<int, double>(n, distance));
-                        //printf("pixel %i, %i, nucleus %i, distance %f\n", row, col, n, distance);
-                    }
-                    // order the nuclei indices by increasing distance
-                    sort(nucleiDistances.begin(), nucleiDistances.end(),
-                         [=](pair<int, double> &a, pair<int, double> &b) {
-                             return a.second < b.second;
-                         });
-
-                    // then look at the closest and make sure it has a viable line
-                    // while we don't have an answer, keep finding the closest and checking it
-                    int nIndex = -1;
-                    while (nIndex == -1 && !nucleiDistances.empty()) {
-                        pair<int, double> closest = nucleiDistances[0];
-                        nIndex = closest.first;
-                        // printf("Checking pixel %i, %i against nucleus %i, distance %f\n", row, col, nIndex, closest.second);
-
-                        // check points along the line between pixel and closest nuclei
-                        //TODO: Use segTools testLineViability
-                        for (float f = 0.1; f < 1.0; f += 0.1) {
-                            float x = pixel.x * f + clump->cells[nIndex].nucleusCenter.x * (1 - f);
-                            float y = pixel.y * f + clump->cells[nIndex].nucleusCenter.y * (1 - f);
-
-                            // if the point is outside the clump, we haven't found our match
-                            if (cv::pointPolygonTest(clump->offsetContour, cv::Point(x, y), false) < 0) {
-                                nIndex = -1;
-                                nucleiDistances.erase(nucleiDistances.begin());
-                                break;
-                                // printf("Point %f, %f falls outside the clump\n", x, y);
-                            }
-                        }
-                    }
-                    if (nIndex > -1) {
-                        clump->nucleiAssocs.at<cv::Vec3d>(row, col) = clump->cells[nIndex].color;
-                        // clump->nucleiAssocs.data[(row + col*clump->nucleiAssocs.rows)*3 + 0] = clump->cells[nIndex].color[0];
-                        // clump->nucleiAssocs.data[(row + col*clump->nucleiAssocs.rows)*3 + 1] = clump->cells[nIndex].color[1];
-                        // clump->nucleiAssocs.data[(row + col*clump->nucleiAssocs.rows)*3 + 2] = clump->cells[nIndex].color[2];
-                        numPixelsAssigned++;
-                    } else {
-                        clump->nucleiAssocs.at<cv::Vec3d>(row, col) = cv::Vec3d(1., 0., 0.);
-                        // clump->nucleiAssocs.data[(row + col*clump->nucleiAssocs.rows)*3 + 0] = 0;
-                        // clump->nucleiAssocs.data[(row + col*clump->nucleiAssocs.rows)*3 + 1] = 0;
-                        // clump->nucleiAssocs.data[(row + col*clump->nucleiAssocs.rows)*3 + 2] = 0;
-                        numPixelsLost++;
-                    }
-                }
+    Cell* findAssociatedCell(cv::Point point, Clump *clump) {
+        vector<pair<Cell*, double>> nucleiDistances = findNucleiDistances(point, clump);
+        sortNucleiDistances(&nucleiDistances);
+        while (!nucleiDistances.empty()) {
+            Cell *closestCell = nucleiDistances[0].first;
+            bool validAssociation = testLineViability(point, clump, closestCell);
+            if (validAssociation) {
+                return closestCell;
+            } else {
+                nucleiDistances.erase(nucleiDistances.begin());
             }
         }
-        if (debug) {
-            printf("For clump: %i, # of cells: %lu, %i pixels total, %i pixels assessed, %i pixels inside clump, %i pixels outside, %i pixels lost\n",
-                   c, clump->cells.size(), pixelTotal, pixelCount, numPixelsAssigned, numPixelsOutside,
-                   numPixelsLost);
+        return nullptr;
+    }
+
+    void associateClumpBoundariesWithCell(Clump *clump, int c, bool debug) {
+        if (clump->cells.size() == 1) {
+            Cell *cell = &clump->cells[0];
+            cell->cytoMask = cv::Mat::zeros(clump->clumpMat.rows, clump->clumpMat.cols, CV_8U);
+            cv::drawContours(cell->cytoMask, vector<vector<cv::Point>>{clump->offsetContour}, -1, 255, CV_FILLED);
+            return;
+        }
+
+        for (int row = 0; row < clump->clumpMat.rows; row++) {
+            for (int col = 0; col < clump->clumpMat.cols; col++) {
+                cv::Point point = cv::Point(col, row);
+                if (cv::pointPolygonTest(clump->offsetContour, point, false) >= 0) {
+                    Cell *associatedCell = findAssociatedCell(point, clump);
+                    if (associatedCell == nullptr) continue;
+
+                    if (associatedCell->cytoMask.empty()) {
+                        associatedCell->cytoMask = cv::Mat::zeros(clump->clumpMat.rows, clump->clumpMat.cols, CV_8U);
+                    }
+                    associatedCell->cytoMask.at<unsigned char>(row, col) = 255;
+                }
+
+            }
         }
     }
-    bool testLineViability(cv::Point pixel, Clump *clump, Cell *cell, int idx) {
+
+    float findDistanceToNearestNucleus(Clump *clump, Cell *cell) {
+        float minDistance = FLT_MAX;
+        for (int i = 0; i < clump->cells.size(); i++) {
+            Cell *comparatorCell = &clump->cells[i];
+            if (cell == comparatorCell) continue;
+            float distance = getDistance(cell->nucleusCenter, comparatorCell->nucleusCenter);
+            minDistance = min(minDistance, distance);
+        }
+        return minDistance;
+    }
+
+    void generateOtherCellBoundaries(Clump *clump) {
+        for (int i = 0; i < clump->cells.size(); i++) {
+            Cell *cell = &clump->cells[i];
+            if (cell->cytoMask.empty()) {
+                float distanceToNearestNucleus = findDistanceToNearestNucleus(clump, cell);
+
+                cv::Mat clumpMask = cv::Mat::zeros(clump->clumpMat.rows, clump->clumpMat.cols, CV_8U);
+
+                cv::drawContours(clumpMask, vector<vector<cv::Point>>{clump->offsetContour}, -1, 255, CV_FILLED);
+
+                cv::Mat contourMask = cv::Mat::zeros(clump->clumpMat.rows, clump->clumpMat.cols, CV_8U);
+                cv::circle(contourMask, cell->nucleusCenter, distanceToNearestNucleus, 255, CV_FILLED);
+
+                cv::bitwise_and(clumpMask, contourMask, contourMask);
+
+                cell->cytoMask = contourMask;
+            }
+        }
+    }
+
+    void getContoursFromMask(Clump *clump) {
+        for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
+            Cell *cell = &clump->cells[cellIdx];
+            vector<vector<cv::Point>> contours;
+            cv::findContours(cell->cytoMask, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+            if (!contours.empty()) {
+                vector<cv::Point> maxContour;
+                int maxArea = 0;
+                for (vector<cv::Point> contour : contours) {
+                    int area = cv::contourArea(contour);
+                    if (area > maxArea) {
+                        maxArea = area;
+                        maxContour = contour;
+                    }
+                }
+                cell->cytoBoundary2 = maxContour;
+            }
+        }
+    }
+
+    bool testLineViability(cv::Point pixel, Clump *clump, Cell *cell) {
         for (float f = 0.1; f < 1.0; f += 0.1) {
             float x = pixel.x * f + cell->nucleusCenter.x * (1 - f);
             float y = pixel.y * f + cell->nucleusCenter.y * (1 - f);
@@ -103,13 +128,15 @@ namespace segment {
             // if the point is outside the clump, we haven't found our match
             if (cv::pointPolygonTest(clump->offsetContour, cv::Point(x, y), false) < 0) {
                 return false;
-                // printf("Point %f, %f falls outside the clump\n", x, y);
             }
         }
         return true;
     }
 
-
+    float getDistance(cv::Point a, cv::Point b) {
+        cv::Point d = a - b;
+        return cv::sqrt(d.x*d.x + d.y*d.y);
+    }
 
     vector<float> getLineDistances(cv::Point start, cv::Point stop) {
         float xDist = stop.x - start.x;
@@ -164,8 +191,8 @@ namespace segment {
         return tmpVec;
     }
 
-    void runInitialCellSegmentation(vector<Clump> *clumps, int threshold1, int threshold2, bool debug) {
-
+    cv::Mat runInitialCellSegmentation(Image *image, int threshold1, int threshold2, bool debug) {
+        vector<Clump> *clumps = &image->clumps;
         // run a find contour on the nucleiBoundaries to get them as contours, not regions
         for (unsigned int c = 0; c < clumps->size(); c++) {
             Clump *clump = &(*clumps)[c];
@@ -185,12 +212,16 @@ namespace segment {
         for closest one, check to make sure it has direct line not leaving clump
         if it does, repeat with 2nd closest until you find one that works
         */
+
+        cv::Mat outimg = image->mat.clone();
+        cv::RNG rng(12345);
+
         for (unsigned int c = 0; c < clumps->size(); c++) {
             Clump *clump = &(*clumps)[c];
 
             for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
                 vector<cv::Point> contour;
-                std::ifstream inFile("clump" + to_string(c) + "cell" + to_string(cellIdx) + ".txt");
+                std::ifstream inFile("../images/clump" + to_string(c) + "cell" + to_string(cellIdx) + ".txt");
                 if (!inFile.fail()) {
                     int x, y;
                     while (inFile >> x >> y) {
@@ -206,8 +237,22 @@ namespace segment {
                 cout << "Loaded contours from clump " << c << endl;
                 continue;
             }
-            
+
+            cout << "clump " << c << endl;
             associateClumpBoundariesWithCell(clump, c, debug);
+            generateOtherCellBoundaries(clump);
+
+            getContoursFromMask(clump);
+
+            for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
+                vector<cv::Point> contour = clump->cells[cellIdx].cytoBoundary2;
+                if (contour.empty()) continue;
+                contour = clump->undoBoundingRect(contour);
+                cv::Scalar color = cv::Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
+                cv::drawContours(outimg, vector<vector<cv::Point>>{contour}, 0, color, 3);
+            }
+
+
 
             //TODO: Collapse these for-loops. They're nice for debugging, but unnecessary and computationally awful
             //TODO: Clean up your pointers. They're everywhere
@@ -229,7 +274,7 @@ namespace segment {
 
 
 
-
+            /*
             for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
                 Cell *cell = &clump->cells[cellIdx];
 
@@ -395,7 +440,17 @@ namespace segment {
                         }
                     }
                 }
+                vector<vector<cv::Point>> initialContour;
+                cv::findContours(cell->cytoMask, initialContour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+                for (vector<cv::Point> contour : initialContour) {
+                    contour = clump->undoBoundingRect(contour);
+                    vector<vector<cv::Point>> contours = {contour};
+                    cv::Scalar color = cv::Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
+                    cv::drawContours(outimg, contours, 0, color, 3);
+                }
+
             }
+            */
             /*
             //TODO: Finish interpolation ****
             //Interpolate extremal contours for each cell
@@ -437,29 +492,10 @@ namespace segment {
                 }
             }
 */
-            clump->calcClumpPrior();
-
-            // print the potential assignment
-            char buffer[200];
-            cv::Mat temp = clump->nucleiAssocs.clone();
-            temp.convertTo(temp, CV_8UC3);
-            sprintf(buffer, "../images/clumps/final_clump_%i_raw.png", c);
-            cv::imwrite(buffer, temp);
-
-            //TODO: Remove duplicated code
-            cv::Mat initialAssignments = runCanny(temp, threshold1, threshold2);
-            vector<vector<cv::Point>> initialCells;
-            cv::findContours(initialAssignments, initialCells, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-
-            cv::Mat outimg;
-            clump->clumpMat.copyTo(outimg);
-            outimg.convertTo(outimg, CV_64FC3);
-
-            cv::drawContours(outimg, clump->nucleiBoundaries, allContours, pink, 2);
-            cv::drawContours(outimg, initialCells, allContours, cv::Scalar(1.0, 0, 0), 2);
-
-            sprintf(buffer, "../images/clumps/final_clump_%i_boundaries_1.png", c);
-            cv::imwrite(buffer, outimg);
+            //clump->calcClumpPrior();
         }
+        cv::imshow("outimg", outimg);
+        cv::waitKey(0);
+        return outimg;
     }
 }

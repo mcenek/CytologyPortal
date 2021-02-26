@@ -124,7 +124,7 @@ namespace segment {
 
             for (unsigned int cellIdxI = 0; cellIdxI < clump->cells.size(); cellIdxI++) {
                 vector<cv::Point> finalContour = finalContours[cellIdxI];
-                std::ofstream outFile("clump" + to_string(clumpIdx) + "cell" + to_string(cellIdxI) + ".txt");
+                std::ofstream outFile("../images/clump" + to_string(clumpIdx) + "cell" + to_string(cellIdxI) + ".txt");
                 for (cv::Point point : finalContour) {
                     outFile << point.x << " " << point.y << endl;
                 }

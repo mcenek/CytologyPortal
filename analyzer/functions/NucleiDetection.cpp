@@ -104,15 +104,15 @@ namespace segment {
         }
 
         // write all the found clumps with nuclei
-        cv::Mat nucleiImg = postNucleiDetection(clumps);
+        cv::Mat nucleiImg = postNucleiDetection(image, clumps);
         image.convertTo(nucleiImg, CV_64FC3);
 
         return nucleiImg;
     }
 
-    cv::Mat postNucleiDetection(vector<Clump> *clumps) {
+    cv::Mat postNucleiDetection(cv::Mat image, vector<Clump> *clumps) {
         removeClumpsWithoutNuclei(clumps);
-        cv::Mat nucleiImg;
+        cv::Mat nucleiImg = image;
         for (unsigned int i = 0; i < clumps->size(); i++) {
             Clump *clump = &(*clumps)[i];
             cv::Mat clumpImg = clump->extract();

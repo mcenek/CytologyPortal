@@ -64,7 +64,6 @@ namespace segment {
                     }
                     associatedCell->cytoMask.at<unsigned char>(row, col) = 255;
                 }
-
             }
         }
     }
@@ -115,7 +114,11 @@ namespace segment {
                         maxContour = contour;
                     }
                 }
-                cell->cytoBoundary2 = maxContour;
+                cell->cytoBoundary = maxContour;
+
+                cell->cytoMask = cv::Mat::zeros(cell->cytoMask.rows, cell->cytoMask.cols, CV_8U);
+                cv::drawContours(cell->cytoMask, vector<vector<cv::Point>>{maxContour}, 0, 255, CV_FILLED);
+
             }
         }
     }
@@ -152,43 +155,13 @@ namespace segment {
         return ret;
     }
 
-    //TODO: Fix this to work in all cases
-    vector<cv::Point> interpolateLine(cv::Point start, cv::Point middle, cv::Point stop) {
-        vector<cv::Point> tmpVec;
-        int detail = 5; //Level of detail
-
-        vector<float> distSM = getLineDistances(start, middle);
-        vector<float> distMS = getLineDistances(middle, stop);
-        vector<float> distSS = getLineDistances(start, stop);
-
-        float percentSM = distSM[2] / (float) (distSM[2] + distMS[2]);
-        int breakpoint = round(detail * percentSM);
-
-        vector<float> deltaSM = {distSM[0] / breakpoint, distSM[1] / breakpoint};
-        vector<float> deltaMS = {distMS[0] / (detail - breakpoint), distMS[1] / (detail - breakpoint)};
-        vector<float> deltaSS = {distSS[0] / detail, distSS[1] / detail};
-
-        float mu = 0.5;
-        mu = (1 - cos(mu * M_PI)) / 2;
-        for (int i = 0; i < detail; i++) {
-            float xPos = start.x + (deltaSS[0] * i);
-            float yPos = start.y + (deltaSS[1] * i);
-            float xPos2, yPos2;
-
-            if (i <= breakpoint) {
-                xPos2 = start.x + (deltaSM[0] * i);
-                yPos2 = start.y + (deltaSM[1] * i);
-            } else {
-                xPos2 = middle.x + (deltaMS[0] * i);
-                yPos2 = middle.y + (deltaMS[1] * i);
-            }
-
-            float interpX = (xPos * (1 - mu) + xPos * mu);
-            float interpY = (yPos * (1 - mu) + yPos2 * mu);
-            tmpVec.push_back(cv::Point(interpX, interpY));
+    void calculateGeometricCenters(Clump *clump) {
+        for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
+            Cell *cell = &clump->cells[cellIdx];
+            cv::Moments m = cv::moments(cell->cytoMask, true);
+            cv::Point p(m.m10 / m.m00, m.m01 / m.m00);
+            cell->geometricCenter = p;
         }
-
-        return tmpVec;
     }
 
     cv::Mat runInitialCellSegmentation(Image *image, int threshold1, int threshold2, bool debug) {
@@ -198,20 +171,10 @@ namespace segment {
             Clump *clump = &(*clumps)[c];
             clump->createCells();
             // sanity check: view all the cell array sizes for each clump
-            printf("Clump: %u, # of nuclei boundaries: %lu, # of cells: %lu\n",
-                   c, clump->nucleiBoundaries.size(), clump->cells.size());
+            //printf("Clump: %u, # of nuclei boundaries: %lu, # of cells: %lu\n",
+            //       c, clump->nucleiBoundaries.size(), clump->cells.size());
         }
 
-
-        /*
-        Initial approach (grossly inefficient...but simple)
-        for each clump:
-        for each pixel:
-        associate with the closest nuclei with a direct line not leaving the clump:
-        measure distance to each nuclei
-        for closest one, check to make sure it has direct line not leaving clump
-        if it does, repeat with 2nd closest until you find one that works
-        */
 
         cv::Mat outimg = image->mat.clone();
         cv::RNG rng(12345);
@@ -221,7 +184,7 @@ namespace segment {
 
             for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
                 vector<cv::Point> contour;
-                std::ifstream inFile("../images/clump" + to_string(c) + "cell" + to_string(cellIdx) + ".txt");
+                std::ifstream inFile("../images/clump" + to_string(c) + "cell" + to_string(cellIdx) + "-.txt");
                 if (!inFile.fail()) {
                     int x, y;
                     while (inFile >> x >> y) {
@@ -238,120 +201,11 @@ namespace segment {
                 continue;
             }
 
-            cout << "clump " << c << endl;
             associateClumpBoundariesWithCell(clump, c, debug);
-            generateOtherCellBoundaries(clump);
+            //generateOtherCellBoundaries(clump);
 
             getContoursFromMask(clump);
-
-            for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
-                vector<cv::Point> contour = clump->cells[cellIdx].cytoBoundary2;
-                if (contour.empty()) continue;
-                contour = clump->undoBoundingRect(contour);
-                cv::Scalar color = cv::Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
-                cv::drawContours(outimg, vector<vector<cv::Point>>{contour}, 0, color, 3);
-            }
-
-
-
-            //TODO: Collapse these for-loops. They're nice for debugging, but unnecessary and computationally awful
-            //TODO: Clean up your pointers. They're everywhere
-
-
-            //Linear interpolation (TEST)
-            //We've used a really odd approach above to generate our cell initial masks
-            //Though it would likely be best to restructure the code, I don't have the time right now
-            //However, since interpolation is necessary for proper overlap representation, we need to calc. something
-            //TODO: Refactor
-
-            //Proposed Approach: Take the assigned pixels, divide them into isolated binary "cell" masks
-            //                   Find overlap between binary cell masks. Treat the extremal overlap points to create a polygon
-            //                   (resembling a triangle), contraining these two extremal overlaps and the centroid of the shared cell mask
-
-            //Issue: The cell masks don't overlap...
-            //Fix: Pad the current cell's mask by 1 on all sides..? Admittedly, this seems awful.
-
-
-
-
-            /*
-            for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
-                Cell *cell = &clump->cells[cellIdx];
-
-
-
-
-
-                cv::Vec3d cellColor = cell->color;
-
-                cv::Mat temp = clump->nucleiAssocs.clone(); //Copy clump mask
-                temp.forEach<cv::Vec3d>([cellColor](cv::Vec3d &pixel, const int *position) -> void {
-                                            if (pixel == cellColor) {
-                                                pixel = {1.0, 1.0, 1.0};
-                                            } else pixel = {0., 0., 0.};
-                                        }
-                );
-
-                temp.convertTo(cell->cytoMask, CV_8UC3); //Keep an eye on this.. Iffy conversion?
-
-                //cout << cell->cytoMask << endl;
-
-                //	    cv::imshow("Cytoplasm mask " + to_string(cellIdx), cell->cytoMask * 1.0);
-                //cv::waitKey(0);
-            };
-
-            //TODO: Finish implementation of Pre-interpolation Contours
-            for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
-                Cell *cell = &clump->cells[cellIdx];
-
-                cv::Mat temp = cell->cytoMask.clone();
-
-
-                cv::cvtColor(temp, temp, CV_RGB2GRAY);
-                //cv::Mat initialAssignments = runCanny(temp, threshold1, threshold2, true); //TODO: Resolve issues with canny detection... I'm getting good results without it..? But we don't have any holes..
-                //TODO: test with holes
-
-                vector<vector<cv::Point>> initialContours;
-
-
-                cv::findContours(temp, initialContours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-
-                //Remove fragments
-                vector<cv::Point> filteredContour;
-                int maxArea = 0;
-                for (vector<cv::Point> contour : initialContours) {
-                    int area = cv::contourArea(contour);
-                    if (area > maxArea) {
-                        maxArea = area;
-                        filteredContour = contour;
-                    }
-                }
-                cell->cytoBoundary = filteredContour;
-
-                cv::Mat initMask = cv::Mat::zeros(clump->clumpMat.rows, clump->clumpMat.cols, CV_8U);
-                cv::drawContours(initMask, vector<vector<cv::Point >>{cell->cytoBoundary}, 0, cv::Scalar(255),
-                                 -1);
-
-                cell->initCytoBoundaryMask = initMask;
-                initMask.convertTo(cell->initCytoBoundaryMask, CV_8U);
-
-                //cell.boundary = initialCells; //Set pre-interpolation contours
-                //	    cv::imshow("Pre-interpolation " + to_string(cellIdx), cell->initCytoBoundaryMask);
-                //	    cv::waitKey(0);
-
-            }
-
-            //Find geometric center
-            for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
-                Cell *cell = &clump->cells[cellIdx];
-
-                cv::Moments m = cv::moments(cell->initCytoBoundaryMask, true);
-                cv::Point p(m.m10 / m.m00, m.m01 / m.m00);
-                cell->geometricCenter = p;
-
-
-            }
-
+            calculateGeometricCenters(clump);
 
 
             //Calculate extremal contour extensions for each cell
@@ -359,22 +213,28 @@ namespace segment {
                 Cell *cell = &clump->cells[cellIdx];
 
 
-
-                cv::Mat initMask = cv::Mat::zeros(clump->clumpMat.rows, clump->clumpMat.cols, CV_8U);
-                cv::drawContours(initMask, vector<vector<cv::Point >>{cell->cytoBoundary}, 0, cv::Scalar(255),
-                                 2);
-                cell->cytoMask = cell->initCytoBoundaryMask;
                 //TODO: If we keep this approach shared edges could be memoized
                 for (unsigned int compIdx = 0; compIdx < clump->cells.size(); compIdx++) {
                     if (cellIdx == compIdx) continue;
 
                     Cell *comparatorCell = &clump->cells[compIdx];
-                    cv::Mat sharedEdge = initMask & comparatorCell->initCytoBoundaryMask;
+
+
+                    cv::Mat sharedEdge;
+
+                    cv::Mat cytoBoundaryMask = cv::Mat::zeros(clump->clumpMat.rows, clump->clumpMat.cols, CV_8U);
+                    cv::Mat comparatorCytoBoundaryMask = cv::Mat::zeros(clump->clumpMat.rows, clump->clumpMat.cols, CV_8U);
+
+                    vector<cv::Point> cytoContour = clump->cells[cellIdx].cytoBoundary;
+                    cv::drawContours(cytoBoundaryMask, vector<vector<cv::Point>>{cytoContour}, 0, 255, 2);
+
+                    vector<cv::Point> comparatorCytoContour = clump->cells[compIdx].cytoBoundary;
+                    cv::drawContours(comparatorCytoBoundaryMask, vector<vector<cv::Point>>{comparatorCytoContour}, 0, 255, 2);
+
+                    cv::bitwise_and(cytoBoundaryMask, comparatorCytoBoundaryMask, sharedEdge);
+
 
                     if (cv::countNonZero(sharedEdge) > 0) {
-                        //		cv::imshow("Shared Edge " + to_string(cellIdx) + ":" + to_string(compIdx), sharedEdge);
-                        //		cv::waitKey(0);
-
                         vector<vector<cv::Point>> sharedEdgeVector;
                         cv::findContours(sharedEdge, sharedEdgeVector, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
 
@@ -404,98 +264,49 @@ namespace segment {
                             cv::Point endPt = sharedEdgeVector[0][endRef];
 
                             if (start == -1 &&
-                                testLineViability(startPt, clump, comparatorCell, compIdx)) {
+                                testLineViability(startPt, clump, comparatorCell)) {
                                 start = startRef;
                                 startPoint = startPt;
-                                //cout << startPt << endl;
                             }
 
-                            if (end == -1 && testLineViability(endPt, clump, comparatorCell, compIdx)) {
+                            if (end == -1 && testLineViability(endPt, clump, comparatorCell)) {
                                 end = endRef;
                                 endPoint = endPt;
-                                //cout << endPt << endl;
                             }
                         }
 
-                        //Verify viable extrapolation was found
                         if (start != -1 && end != -1) {
-                            cv::Mat temp = cv::Mat::zeros(cell->initCytoBoundaryMask.rows,cell->initCytoBoundaryMask.cols, CV_8U);
+                            cv::Mat overlappingContour = cv::Mat::zeros(cell->cytoMask.rows,cell->cytoMask.cols, CV_8U);
                             float angle = angleBetween(startPoint, endPoint);
                             cv::Point midpoint = getMidpoint(startPoint, endPoint);
                             double width = cv::norm(startPoint-endPoint);
                             double height = width / 2;
                             cv::RotatedRect rotatedRect = cv::RotatedRect(midpoint, cv::Size2f(width,height), angle);
-                            cv::ellipse(temp, rotatedRect, cv::Scalar(255), -1);
-                            cv::bitwise_and(temp, comparatorCell->initCytoBoundaryMask, temp);
-
-
-                            cell->cytoMask = cell->initCytoBoundaryMask + temp;
-
-
-                            //cv::findContours(mask, cell->interpolatedContour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-
-                            //displayMatrix()
-                            //		  cv::imshow("Extrapolation " + to_string(cellIdx) + ":" + to_string(compIdx), mask);
-                            //		  cv::waitKey(0);
+                            cv::ellipse(overlappingContour, rotatedRect, cv::Scalar(255), -1);
+                            cv::bitwise_and(overlappingContour, comparatorCell->cytoMask, overlappingContour);
+                            cell->cytoMask += overlappingContour;
                         }
                     }
                 }
-                vector<vector<cv::Point>> initialContour;
-                cv::findContours(cell->cytoMask, initialContour, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-                for (vector<cv::Point> contour : initialContour) {
-                    contour = clump->undoBoundingRect(contour);
-                    vector<vector<cv::Point>> contours = {contour};
-                    cv::Scalar color = cv::Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
-                    cv::drawContours(outimg, contours, 0, color, 3);
-                }
+
 
             }
-            */
-            /*
-            //TODO: Finish interpolation ****
-            //Interpolate extremal contours for each cell
+
+
             for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
                 Cell *cell = &clump->cells[cellIdx];
-
-                //cv::Mat cellCoords;
-                //cell->interpolatedContour.convertTo(cellCoords, CV_8UC1, 1.0);
-                //cv::findNonZero(cellCoords, cellCoords);
-
-                for (unsigned int compIdx = 0; compIdx < clump->cells.size(); compIdx++) {
-                    if (cellIdx == compIdx) continue;
-
-                    Cell *comparatorCell = &clump->cells[compIdx];
-
-                    cv::Mat mask = cv::Mat::zeros(clump->clumpMat.rows, clump->clumpMat.cols, CV_64FC1);
-                    cv::Mat out = cv::Mat::zeros(clump->clumpMat.rows, clump->clumpMat.cols, CV_64FC1);
-
-                    cv::Mat coords;
-                    comparatorCell->interpolatedContour.convertTo(coords, CV_8UC1, 1.0);
-                    //cv::findNonZero(coords, coords);
-                    coords.convertTo(coords, CV_16SC2);
-
-                    cv::Mat empty = cv::Mat();
-
-                    cout << coords.type() << " " << (coords.type() == CV_16SC2) << endl;
-                    cout << empty.empty() << endl;
-                    cv::remap(cell->interpolatedContour, out, coords, empty, INTER_CUBIC);
-
-
-
-                    //cv::drawContours(cell->initCytoBoundaryMask, vector<vector<cv::Point>> {comparatorCell->interpolatedContour}, 0, cv::Scalar(1.0), 1, FILLED);
-
-                    //cv::imshow("c", out);
-                    //cv::waitKey(0);
-
-                    //cv::imshow("Interp. " + to_string(cellIdx) + ":" + to_string(compIdx), cell->initCytoBoundaryMask);
-                    //cv::waitKey(0);
+                vector<vector<cv::Point>> contours;
+                cv::findContours(cell->cytoMask, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+                if (!contours.empty()) {
+                    contours[0] = clump->undoBoundingRect(contours[0]);
+                    cv::Scalar color = cv::Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
+                    cv::drawContours(outimg, vector<vector<cv::Point>>{contours[0]}, 0, color, 3);
                 }
             }
-*/
-            //clump->calcClumpPrior();
+
+            clump->calcClumpPrior();
         }
-        cv::imshow("outimg", outimg);
-        cv::waitKey(0);
+
         return outimg;
     }
 }

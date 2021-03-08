@@ -1,5 +1,6 @@
 #include "Image.h"
 #include "Clump.h"
+#include "../functions/SegmenterTools.h"
 
 namespace segment {
     Image::Image(string path) {
@@ -47,27 +48,10 @@ namespace segment {
         cv::Mat img = this->mat.clone();
         for (int i = 0; i < this->clumps.size(); i++) {
             Clump *clump = &this->clumps[i];
-            try {
-                cout << "clump " << i << endl;
-                for (int j = 0; j < clump->finalCellContours.size(); j++) {
-                    if (clump->finalCellContours[j].empty()) {
-                        continue;
-                    }
-
-                    cv::Scalar color = cv::Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
-                    vector<vector<cv::Point>> contour = {clump->finalCellContours[j]};
-                    cv::drawContours(img, contour, 0, color, 3);
-
-                }
-
-            } catch(int e) {}
-
+            drawColoredContours(&img, &clump->finalCellContours, &rng);
         }
-        cv::imshow("x", img);
-        cv::waitKey(0);
         cv::imwrite("../images/cell_boundaries.png", img);
-
-
-
+        cv::imshow("Overlapping Cell Segmentation", img);
+        cv::waitKey(0);
     }
 }

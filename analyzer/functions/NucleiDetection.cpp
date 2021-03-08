@@ -93,7 +93,7 @@ namespace segment {
         for (unsigned int i = 0; i < clumps->size(); i++) {
             cv::Mat clump = (*clumps)[i].extract();
 
-            cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(5);
+            cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(1);
             cv::cvtColor(clump, clump, CV_RGB2GRAY);
             //clahe->apply(clump, clump);
             cv::cvtColor(clump, clump, CV_GRAY2RGB);

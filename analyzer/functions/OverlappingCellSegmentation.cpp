@@ -30,9 +30,9 @@ namespace segment {
         return overAreaTerm;
     }
 
-    bool isConverged(Cell *cellI, int i) {
+    bool isConverged(Cell *cellI) {
         double newPhiArea = cellI->getPhiArea();
-        if (abs(cellI->phiArea - newPhiArea) < 50 || i > 2000) {
+        if (abs(cellI->phiArea - newPhiArea) < 50) {
             cellI->phiConverged = true;
 
         }
@@ -77,47 +77,39 @@ namespace segment {
             for (unsigned int cellIdxI = 0; cellIdxI < clump->cells.size(); cellIdxI++) {
                 Cell *cellI = &clump->cells[cellIdxI];
                 cellI->phi = padMatrix(cellI->phi, 2);
-
             }
 
         }
 
-        //Iterate over each clump
         for (unsigned int clumpIdx = 0; clumpIdx < clumps->size(); clumpIdx++) {
             Clump *clump = &(*clumps)[clumpIdx];
             int cellsConverged = 0;
 
-
+            if (clumpHasSingleCell(clump)) cellsConverged = clump->cells.size();
             if (clump->finalCellContours.size() == clump->cells.size()) continue;
 
-            //int i = 0;
-            if (clump->cells.size() > 1) {
-                //while (cellsConverged < clump->cells.size()) {
-                for (int i = 0; i < 200; i++) {
-                    for (unsigned int cellIdxI = 0; cellIdxI < clump->cells.size(); cellIdxI++) {
-                        Cell *cellI = &clump->cells[cellIdxI];
+            int i = 0;
+            while (cellsConverged < clump->cells.size() && i < 1000) {
+                for (unsigned int cellIdxI = 0; cellIdxI < clump->cells.size(); cellIdxI++) {
+                    Cell *cellI = &clump->cells[cellIdxI];
 
-                        if (cellI->phiConverged) {
-                            continue;
-                        }
-
-                        updatePhi(cellI, clump, dt, epsilon, mu, kappa, chi);
-
-                        cout << "LSF Iteration " << i << ": Clump " << clumpIdx << ", Cell " << cellIdxI << endl;
-
-                        /*
-                        if (i >= 50 && i % 50 == 0) {
-                            if (isConverged(cellI, i)) {
-                                cellsConverged++;
-                                cout << "converged" << endl;
-
-
-                            }
-                        }
-                         */
+                    if (cellI->phiConverged) {
+                        continue;
                     }
-                    i++;
+
+                    updatePhi(cellI, clump, dt, epsilon, mu, kappa, chi);
+
+                    //cout << "LSF Iteration " << i << ": Clump " << clumpIdx << ", Cell " << cellIdxI << endl;
+
+                    if (i != 0 && i % 50 == 0) {
+                        if (isConverged(cellI)) {
+                            cellsConverged++;
+                            //cout << "converged" << endl;
+                        }
+                    }
+
                 }
+                i++;
             }
 
             vector<vector<cv::Point>> finalContours = clump->getFinalCellContours();
@@ -129,28 +121,11 @@ namespace segment {
                     outFile << point.x << " " << point.y << endl;
                 }
             }
-
-
-
-
-
-
         }
-
-        //runPostOverlappingSegmentation(clumps);
-    }
-
-    void runPostOverlappingSegmentation(vector<Clump> *clumps) {
-
     }
 
     void updatePhi(Cell *cellI, Clump *clump, double dt, double epsilon, double mu, double kappa, double chi) {
-        //displayMatrix("phi", cellI->phi);
-        //cellI->phi = neumannBoundCond(cellI->phi);
         vector <cv::Mat> gradient = calcGradient(cellI->phi);
-        cv::Mat gradientX = getGradientX(gradient);
-        cv::Mat gradientY = getGradientY(gradient);
-        cv::Mat magnitude = calcMagnitude(gradientX, gradientY);
         cv::Mat regularizer = calcSignedDistanceReg(cellI->phi);
         cv::Mat dirac = calcDiracDelta(cellI->phi, epsilon);
         cv::Mat gac = calcGeodesicTerm(dirac, gradient, clump->edgeEnforcer, clump->clumpPrior);

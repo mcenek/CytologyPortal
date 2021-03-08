@@ -17,5 +17,8 @@ namespace segment {
 
     float angleBetween(const cv::Point v1, const cv::Point v2);
 
+    cv::Mat drawColoredContours(cv::Mat img, vector<vector<cv::Point>> *contours);
+
+    cv::Mat* drawColoredContours(cv::Mat *img, vector<vector<cv::Point>> *contours, cv::RNG *rng);
 }
 #endif //SEGMENTER_CPP_SEGMENTERTOOLS_H

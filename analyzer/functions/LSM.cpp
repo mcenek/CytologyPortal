@@ -1,7 +1,7 @@
 #include "opencv2/opencv.hpp"
 #include "../objects/Clump.h"
 #include "LSM.h"
-
+#include <ctime>
 using namespace std;
 
 namespace segment {
@@ -377,18 +377,12 @@ namespace segment {
         }
 
         bool hasOverlap(cv::Mat mat1, cv::Mat mat2) {
-            for (int i = 0; i < mat1.rows; i++) {
-                float *mat1Row = mat1.ptr<float>(i);
-                float *mat2Row = mat2.ptr<float>(i);
-                for (int j = 0; j < mat1.cols; j++) {
-                    float mat1Value = mat1Row[j];
-                    float mat2Value = mat2Row[j];
-                    if (mat1Value != 2 && mat2Value != 2) {
-                        return true;
-                    }
-                }
-            }
-            return false;
+            cv::Mat thresholdMat1, thresholdMat2;
+            cv::threshold(mat1, thresholdMat1, 0, 1, CV_THRESH_BINARY_INV);
+            cv::threshold(mat2, thresholdMat2, 0, 1, CV_THRESH_BINARY_INV);
+            cv::Mat overlapMask;
+            cv::bitwise_and(thresholdMat1, thresholdMat2, overlapMask);
+            return cv::countNonZero(overlapMask) > 0;
         }
 
         cv::Mat neumannBoundCond(cv::Mat mat) {
@@ -417,5 +411,4 @@ namespace segment {
 
             return nbc;
         }
-
 }

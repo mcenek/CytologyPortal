@@ -15,10 +15,8 @@ namespace segment {
         cv::Vec3b color;
         cv::Point nucleusCenter;
         cv::Point geometricCenter; //Currently unassigned
-        vector <cv::Point> cytoBoundary;
-        vector <cv::Point> cytoBoundary2;
+        vector<cv::Point> cytoBoundary;
         cv::Mat cytoMask;
-        cv::Mat initCytoBoundaryMask; //TODO: Might be pointless.. Keep tabs
         cv::Mat nucleusMask; //Used to avoid re-computing the nucleiMasks
         vector <cv::Point> nucleusBoundary;
         cv::Mat interpolatedContour;

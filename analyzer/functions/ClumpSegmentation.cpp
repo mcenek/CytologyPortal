@@ -14,7 +14,6 @@ namespace segment {
         cv::Mat vx = getGradientX(gGradient);
         cv::Mat vy = getGradientY(gGradient);
         for (int i = 0; i < iter_in; i++) {
-            phi = neumannBoundCond(phi);
             vector <cv::Mat> gradient = calcGradient(phi);
             vector <cv::Mat> curvatureXY = calcCurvatureXY(gradient);
             cv::Mat Nx = curvatureXY[0];
@@ -205,16 +204,15 @@ namespace segment {
         img.convertTo(img, CV_8UC1);
         vector<vector<cv::Point>> contours;
         cv::findContours(img, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-        vector<vector<cv::Point> > clumpBoundaries = vector<vector<cv::Point> >();
+        vector<vector<cv::Point>> clumpBoundaries = vector<vector<cv::Point> >();
         for (unsigned int i = 0; i < contours.size(); i++) {
             vector<cv::Point> contour = contours[i];
             double area = cv::contourArea(contour);
             if (area > minAreaThreshold) {
-                // TODO add debug check or rm
-                if (false) printf("Adding new clump, size:%f threshold:%f\n", area, minAreaThreshold);
                 clumpBoundaries.push_back(contour);
             }
         }
         return clumpBoundaries;
     }
+
 }

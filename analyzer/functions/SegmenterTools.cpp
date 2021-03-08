@@ -39,10 +39,28 @@ namespace segment {
     float angleBetween(const cv::Point v1, const cv::Point v2)
     {
         float dy = v1.y - v2.y;
-        float dx = v1.x - v2.y;
+        float dx = v1.x - v2.x;
         float theta = atan(dy/dx);
-        theta *= 180/M_PI;
+        theta *= 180.0/M_PI;
         return theta;
+    }
+
+    cv::Mat drawColoredContours(cv::Mat img, vector<vector<cv::Point>> *contours) {
+        img = img.clone();
+        cv::RNG rng(12345);
+        return *drawColoredContours(&img, contours, &rng);
+    }
+
+    cv::Mat* drawColoredContours(cv::Mat *img, vector<vector<cv::Point>> *contours, cv::RNG *rng) {
+        for (int j = 0; j < contours->size(); j++) {
+            if ((*contours)[j].empty()) {
+                continue;
+            }
+            cv::Scalar color = cv::Scalar(rng->uniform(0,255), rng->uniform(0, 255), rng->uniform(0, 255));
+            vector<vector<cv::Point>> contour = {(*contours)[j]};
+            cv::drawContours(*img, contour, 0, color, 3);
+        }
+        return img;
     }
 
 }

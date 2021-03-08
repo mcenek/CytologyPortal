@@ -174,7 +174,7 @@ namespace segment {
     cv::Mat Clump::calcClumpPrior() {
         for (unsigned int cellIdx = 0; cellIdx < this->cells.size(); cellIdx++) {
             Cell *cell = &this->cells[cellIdx];
-            cell->initializePhi();
+            if (cell->phi.empty()) cell->initializePhi();
             cell->calcShapePrior();
             if (this->clumpPrior.empty()) this->clumpPrior = cell->shapePrior;
             else cv::max(this->clumpPrior, cell->shapePrior, this->clumpPrior);

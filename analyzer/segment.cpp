@@ -50,10 +50,10 @@ int main (int argc, const char * argv[])
     // GMM params
     int maxGmmIterations = 10;
     // GMM post processing params
-    double minAreaThreshold = 200.0;
+    double minAreaThreshold = 1000.0;
     // MSER params
-    int delta = 10, minArea = 120, maxArea = 600;
-    double maxVariation = 0.5, minDiversity = 0.25;
+    int delta = 4, minArea = 120, maxArea = 600;
+    double maxVariation = 0.10, minDiversity = 0.25;
 
     try
     {
@@ -71,8 +71,7 @@ int main (int argc, const char * argv[])
           ("delta", value<int>()->default_value(delta), "Delta")
           ("minArea", value<int>()->default_value(minArea), "Min area")
           ("maxArea", value<int>()->default_value(maxArea), "Max area")
-          ("image,i", value<std::string>()->default_value("./images/EDF003-1.png"), "Input image");
-
+          ("image,i", value<std::string>()->default_value("./images/EDF/EDF000.png"), "Input image");
         variables_map vm;
         store(parse_command_line(argc, argv, desc), vm);
         notify(vm);

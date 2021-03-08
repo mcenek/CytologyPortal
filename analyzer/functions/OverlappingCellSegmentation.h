@@ -14,13 +14,11 @@ namespace segment {
 
     cv::Mat calcBinaryEnergy(cv::Mat mat, cv::Mat clumpPrior, cv::Mat edgeEnforcer, cv::Mat dirac);
 
-    bool isConverged(Cell *cellI, int i);
+    bool isConverged(Cell *cellI);
 
     bool clumpHasSingleCell(Clump *clump);
 
     void runOverlappingSegmentation(vector<Clump> *clumps);
-
-    void runPostOverlappingSegmentation(vector<Clump> *clumps);
 
     void updatePhi(Cell *cellI, Clump *clump, double dt, double epsilon, double mu, double kappa, double chi);
 

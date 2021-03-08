@@ -41,8 +41,8 @@ namespace segment {
     }
 
     void Cell::initializePhi() {
-        if (this->cytoMask .empty())
-            cerr << "cytoMask  must be defined and present before Cell::initializePhi() can be run." << "\n";
+        if (this->cytoMask.empty())
+            cerr << "cytoMask must be defined and present before Cell::initializePhi() can be run." << "\n";
         this->cytoMask.convertTo(this->phi, CV_32FC1, 1.0/255);
 
         for (int i = 0; i < this->phi.rows; i++) {
@@ -53,6 +53,7 @@ namespace segment {
                 else row[j] = 2;
             }
         }
+
         this->phiArea = this->getPhiArea();
         this->phiConverged = false;
     }
@@ -101,7 +102,9 @@ namespace segment {
         this->phi.convertTo(temp, CV_8UC1, 255);
         temp = 1 - temp;
         vector<vector<cv::Point>> contours;
+
         cv::findContours(temp, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+
         temp = cv::Mat::ones(this->phi.rows, this->phi.cols, CV_32FC1);
         for (int i = 0; i < temp.rows; i++) {
             for (int j = 0; j < temp.cols; j++) { //Assumes a single channel matrix
@@ -112,6 +115,7 @@ namespace segment {
                     temp.at<float>(i, j) = 0.0;
             }
         }
+
 
         this->shapePrior = temp;
         return this->shapePrior;

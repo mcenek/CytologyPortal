@@ -13,6 +13,7 @@
 #include "functions/InitialCellSegmentation.h"
 #include "functions/NucleiDetection.h"
 #include "functions/OverlappingCellSegmentation.h"
+#include <chrono>
 
 extern "C" {
 #include "vl/quickshift.h"
@@ -125,37 +126,39 @@ namespace segment {
         }
 
         void runSegmentation(string fileName) {
-            clock_t total = clock();
-            clock_t start;
+            auto total = chrono::high_resolution_clock::now();
+
             double end;
 
             Image image = Image(fileName);
 
             cv::Mat outimg;
 
-            start = clock();
+
+            auto startClumpSeg = chrono::high_resolution_clock::now();
+            auto start = chrono::high_resolution_clock::now();
             if (debug) printf("Beginning quickshift...\n");
 
-            cv::Mat postQuickShift = loadMatrix("../images/quickshifted_cyto.yml");
+            cv::Mat postQuickShift = loadMatrix("../images/quickshifted_cyto-.yml");
             if (postQuickShift.empty()) {
                 postQuickShift = runQuickshift(image.mat, kernelsize, maxdist);
                 saveMatrix("../images/quickshifted_cyto.yml", postQuickShift);
                 cv::imwrite("../images/quickshifted_cyto.png", postQuickShift);
             }
-
-            end = (clock() - start) / CLOCKS_PER_SEC;
+            
+            end = std::chrono::duration_cast<std::chrono::microseconds>(chrono::high_resolution_clock::now()-start).count() / 1000000.0;
             if (debug) printf("Quickshift complete, time: %f\n", end);
 
-            start = clock();
+            start = chrono::high_resolution_clock::now();
             if (debug) printf("Beginning Edge Detection...\n");
 
             cv::Mat postEdgeDetection = runCanny(postQuickShift, threshold1, threshold2, true);
             cv::imwrite("../images/edgeDetectedEroded_cyto.png", postEdgeDetection);
 
-            end = (clock() - start) / CLOCKS_PER_SEC;
+            end = std::chrono::duration_cast<std::chrono::microseconds>(chrono::high_resolution_clock::now()-start).count() / 1000000.0;
             if (debug) printf("Edge Detection complete, time: %f\n", end);
 
-            start = clock();
+            start = chrono::high_resolution_clock::now();
             if (debug) printf("Beginning CCA and building convex hulls...\n");
 
             // find contours
@@ -181,13 +184,13 @@ namespace segment {
 
             cv::imwrite("../images/hulls_cyto.png", outimg);
 
-            end = (clock() - start) / CLOCKS_PER_SEC;
+            end = std::chrono::duration_cast<std::chrono::microseconds>(chrono::high_resolution_clock::now()-start).count() / 1000000.0;
             if (debug) printf("Finished with CCA and convex hulls, time: %f\n", end);
 
-            start = clock();
+            start = chrono::high_resolution_clock::now();
             if (debug) printf("Beginning Gaussian Mixture Modeling...\n");
 
-            cv::Mat gmmPredictions = loadMatrix("../images/gmmPredictions.yml");
+            cv::Mat gmmPredictions = loadMatrix("../images/gmmPredictions.yml-");
             if (gmmPredictions.empty()) {
                 gmmPredictions = runGmm(image.mat, hulls, maxGmmIterations);
                 saveMatrix("../images/gmmPredictions.yml", gmmPredictions);
@@ -199,30 +202,30 @@ namespace segment {
 
 
 
-            end = (clock() - start) / CLOCKS_PER_SEC;
+            end = std::chrono::duration_cast<std::chrono::microseconds>(chrono::high_resolution_clock::now()-start).count() / 1000000.0;
             if (debug) printf("Finished with Gaussian Mixture Modeling, time: %f\n", end);
 
-            start = clock();
+            start = chrono::high_resolution_clock::now();
             if (debug) printf("Beginning GMM Output post processing...\n");
 
             vector<vector<cv::Point>> clumpBoundaries = findFinalClumpBoundaries(gmmPredictions, minAreaThreshold);
 
-            cv::drawContours(outimg, clumpBoundaries, allContours, pink, 2);
-
-            cv::imwrite("../images/clump_boundaries.png", outimg);
-
-            cv::Mat test = image.mat.clone();
-            cv::drawContours(test, clumpBoundaries, allContours, 0, 2);
-            displayMatrix("out", test);
+            outimg = drawColoredContours(image.mat, &clumpBoundaries);
+            //cv::imwrite("../images/clump_boundaries.png", outimg);
+            //cv::imshow("Clump Segmentation", outimg);
+            //cv::waitKey(0);
 
             // extract each clump from the original image
             image.createClumps(clumpBoundaries);
 
-            end = (clock() - start) / CLOCKS_PER_SEC;
+            end = std::chrono::duration_cast<std::chrono::microseconds>(chrono::high_resolution_clock::now()-start).count() / 1000000.0;
             unsigned int numClumps = clumpBoundaries.size();
             if (debug) printf("Finished GMM post processing, clumps found:%i, time: %f\n", numClumps, end);
 
-            start = clock();
+            double endClumpSeg = std::chrono::duration_cast<std::chrono::microseconds>(chrono::high_resolution_clock::now()-startClumpSeg).count() / 1000000.0;
+            if (debug) printf("Finished clump segmentation, time: %f\n", endClumpSeg);
+
+            start = chrono::high_resolution_clock::now();
             if (debug) printf("Beginning MSER nuclei detection...\n");
 
             cv::Mat nucleiImg = runNucleiDetection(image.mat, &image.clumps, delta, minArea, maxArea, maxVariation, minDiversity, debug);
@@ -230,18 +233,19 @@ namespace segment {
             //Save a snapshot of nuclei across all clumps
             cv::imwrite("../images/nuclei_boundaries.png", nucleiImg);
 
-            end = (clock() - start) / CLOCKS_PER_SEC;
+            end = std::chrono::duration_cast<std::chrono::microseconds>(chrono::high_resolution_clock::now()-start).count() / 1000000.0;
             if (debug) printf("Finished MSER nuclei detection, time: %f\n", end);
 
-            start = clock();
+            start = chrono::high_resolution_clock::now();
             if (debug) printf("Beginning initial cell segmentation...\n");
 
 
             cv::Mat initialCells = runInitialCellSegmentation(&image, threshold1, threshold2, debug);
-            cv::imwrite("../images/initial_cell_boundaries.png", initialCells);
+            //cv::imwrite("../images/initial_cell_boundaries.png", initialCells);
+            //cv::imshow("Initial Cell Segmentation", initialCells);
+            //cv::waitKey(0);
 
-
-            end = (clock() - start) / CLOCKS_PER_SEC;
+            end = std::chrono::duration_cast<std::chrono::microseconds>(chrono::high_resolution_clock::now()-start).count() / 1000000.0;
             if (debug) printf("Finished initial cell segmentation, time: %f\n", end);
 
             // print the nuclei sizes
@@ -255,19 +259,21 @@ namespace segment {
             nucleiSizes.close();
 
 
-            start = clock();
+            start = chrono::high_resolution_clock::now();
             if (debug) printf("Beginning segmentation by level set functions...\n");
 
             runOverlappingSegmentation(&image.clumps);
 
-            end = (clock() - start) / CLOCKS_PER_SEC;
+            end = std::chrono::duration_cast<std::chrono::microseconds>(chrono::high_resolution_clock::now()-start).count() / 1000000.0;
             if (debug) printf("Finished level set cell segmentation, time: %f\n", end);
             //displayResults(&image.clumps);
-            image.showFinalResults();
+
 
             // clean up
-            end = (clock() - total) / CLOCKS_PER_SEC;
+            end = std::chrono::duration_cast<std::chrono::microseconds>(chrono::high_resolution_clock::now()-total).count() / 1000000.0;
+
             if (debug || totalTimed) printf("Segmentation finished, total time: %f\n", end);
+            image.showFinalResults();
         }
     };
 

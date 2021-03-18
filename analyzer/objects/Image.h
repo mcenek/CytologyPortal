@@ -1,5 +1,5 @@
-#ifndef SEGMENTER_CPP_IMAGE_H
-#define SEGMENTER_CPP_IMAGE_H
+#ifndef IMAGE_H
+#define IMAGE_H
 
 
 #include "opencv2/opencv.hpp"
@@ -28,4 +28,4 @@ namespace segment {
     };
 }
 
-#endif //SEGMENTER_CPP_IMAGE_H
+#endif //IMAGE_H

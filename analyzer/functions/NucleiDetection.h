@@ -1,5 +1,5 @@
-#ifndef SEGMENTER_CPP_NUCLEIDETECTION_H
-#define SEGMENTER_CPP_NUCLEIDETECTION_H
+#ifndef NUCLEIDETECTION_H
+#define NUCLEIDETECTION_H
 
 #include "opencv2/opencv.hpp"
 #include "../objects/Clump.h"
@@ -30,4 +30,4 @@ namespace segment {
 }
 
 
-#endif //SEGMENTER_CPP_NUCLEIDETECTION_H
+#endif //NUCLEIDETECTION_H

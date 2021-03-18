@@ -153,9 +153,10 @@ namespace segment {
 
         cv::Mat outimg;
         labels.copyTo(outimg);
-        outimg.convertTo(outimg, CV_8U, 255);
+        outimg.convertTo(outimg, CV_8UC1, 255);
 
         outimg = runGmmCleanup(img, outimg);
+
         return outimg;
     }
 
@@ -167,7 +168,7 @@ namespace segment {
         cv::Mat edgeEnforcer = calcEdgeEnforcer(im);
         cv::Mat initialPhi;
 
-        gmmPredictions.convertTo(initialPhi, CV_32FC1);
+        gmmPredictions.convertTo(initialPhi, CV_32FC1, 1.0/255.0);
         for (int i = 0; i < initialPhi.rows; i++) {
             float *row = initialPhi.ptr<float>(i);
             for (int j = 0; j < initialPhi.cols; j++) {
@@ -186,7 +187,10 @@ namespace segment {
         }
         alpha = 0;
         phi = drlse_denoise(phi, edgeEnforcer, lambda, mu, alpha, epsilon, timestep);
+
         cv::bitwise_not(phi, phi);
+
+        phi.convertTo(phi, CV_8UC1, 255.0);
         return phi;
     }
 
@@ -200,15 +204,23 @@ namespace segment {
     int minAreaThreshold = the minimum area, all contours smaller than this are discarded
     */
     vector<vector<cv::Point>> findFinalClumpBoundaries(cv::Mat img, double minAreaThreshold) {
-        //cv::threshold(img, img, 1.9, 1, CV_THRESH_BINARY);
-        img.convertTo(img, CV_8UC1);
+        //Crop gmm because some gmm outputs have a white border which interferes with find contours
+        int padding = 2;
+        cv::Rect cropRect(padding, padding, img.cols - 2 * padding, img.rows - 2 * padding);
+        img = img(cropRect);
+
         vector<vector<cv::Point>> contours;
         cv::findContours(img, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+
         vector<vector<cv::Point>> clumpBoundaries = vector<vector<cv::Point> >();
         for (unsigned int i = 0; i < contours.size(); i++) {
             vector<cv::Point> contour = contours[i];
             double area = cv::contourArea(contour);
             if (area > minAreaThreshold) {
+                //Undo the cropping
+                for(unsigned int j = 0; j < contour.size(); j++) {
+                    contour[j] = cv::Point(contour[j].x + padding, contour[j].y + padding);
+                }
                 clumpBoundaries.push_back(contour);
             }
         }

@@ -1,5 +1,5 @@
-#ifndef SEGMENTER_CPP_CLUMPSEGMENTATION_H
-#define SEGMENTER_CPP_CLUMPSEGMENTATION_H
+#ifndef CLUMPSEGMENTATION_H
+#define CLUMPSEGMENTATION_H
 
 #include "opencv2/opencv.hpp"
 #include "../objects/Clump.h"
@@ -51,4 +51,4 @@ namespace segment {
 }
 
 
-#endif //SEGMENTER_CPP_CLUMPSEGMENTATION_H
+#endif //CLUMPSEGMENTATION_H

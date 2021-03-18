@@ -7,7 +7,7 @@ LINKS=-g -lvl -lopencv_core -lopencv_imgcodecs -lopencv_imgproc -lopencv_highgui
 %.o: %.cpp
 	$(CC) -c -o $@ $< $(IDIRS) $(LDIRS) $(LINKS)
 
-segment: segment.o Segmenter.cpp VLFeatWrapper.cpp functions/LSM.o functions/SegmenterTools.o functions/ClumpSegmentation.o functions/InitialCellSegmentation.o functions/NucleiDetection.o functions/OverlappingCellSegmentation.o objects/Cell.o objects/Clump.o objects/Image.o
+segment: segment.o Segmenter.cpp VLFeatWrapper.cpp functions/LSM.o functions/SegmenterTools.o functions/ClumpSegmentation.o functions/EvaluateSegmentation.o functions/InitialCellSegmentation.o functions/NucleiDetection.o functions/OverlappingCellSegmentation.o objects/Cell.o objects/Clump.o objects/Image.o
 	export LD_LIBRARY_PATH=$(VLROOT)bin/glnxa64
 	[ -d ../images ] || mkdir ../images #TODO: Consider just adding ../images to the initial repo
 	$(CC) -o segment segment.o functions/*.o objects/*.o $(IDIRS) $(LDIRS) $(LINKS)

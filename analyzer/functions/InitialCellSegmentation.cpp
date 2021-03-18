@@ -66,6 +66,8 @@ namespace segment {
                 }
             }
         }
+
+
     }
 
     float findDistanceToNearestNucleus(Clump *clump, Cell *cell) {
@@ -103,6 +105,7 @@ namespace segment {
         for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
             Cell *cell = &clump->cells[cellIdx];
             vector<vector<cv::Point>> contours;
+
             cv::findContours(cell->cytoMask, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
             if (!contours.empty()) {
                 vector<cv::Point> maxContour;
@@ -117,6 +120,7 @@ namespace segment {
                 cell->cytoBoundary = maxContour;
 
                 cell->cytoMask = cv::Mat::zeros(cell->cytoMask.rows, cell->cytoMask.cols, CV_8U);
+
                 cv::drawContours(cell->cytoMask, vector<vector<cv::Point>>{maxContour}, 0, 255, CV_FILLED);
 
             }
@@ -184,7 +188,7 @@ namespace segment {
 
             for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
                 vector<cv::Point> contour;
-                std::ifstream inFile("../images/clump" + to_string(c) + "cell" + to_string(cellIdx) + "-.txt");
+                std::ifstream inFile("../images/clump" + to_string(c) + "cell" + to_string(cellIdx) + ".txt");
                 if (!inFile.fail()) {
                     int x, y;
                     while (inFile >> x >> y) {
@@ -206,6 +210,7 @@ namespace segment {
 
             getContoursFromMask(clump);
             calculateGeometricCenters(clump);
+
 
 
             //Calculate extremal contour extensions for each cell

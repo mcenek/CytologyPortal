@@ -1,5 +1,5 @@
-#ifndef SEGMENTER_CPP_LSM_H
-#define SEGMENTER_CPP_LSM_H
+#ifndef LSM_H
+#define LSM_H
 
 #include "../objects/Clump.h"
 
@@ -52,4 +52,4 @@ namespace segment {
 
 }
 
-#endif //SEGMENTER_CPP_LSM_H
+#endif //LSM_H

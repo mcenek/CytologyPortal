@@ -5,8 +5,9 @@
 namespace segment {
     Image::Image(string path) {
         this->path = path;
+        this->padding = 1;
         this->mat = readMatrix(path);
-        this->padding = 30;
+
 
         int channels = this->mat.channels();
         int width = this->mat.cols;
@@ -19,6 +20,7 @@ namespace segment {
 
     cv::Mat Image::readMatrix(string path) {
         cv::Mat image = cv::imread(path);
+
         if (image.empty()) {
             cerr << "Could not read image at: " << path << endl;
         }

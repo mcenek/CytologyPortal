@@ -8,6 +8,7 @@
 #include "objects/Cell.h"
 #include "objects/Image.h"
 #include "functions/LSM.h"
+#include "functions/EvaluateSegmentation.h"
 #include "functions/SegmenterTools.h"
 #include "functions/ClumpSegmentation.h"
 #include "functions/InitialCellSegmentation.h"
@@ -139,7 +140,7 @@ namespace segment {
             auto start = chrono::high_resolution_clock::now();
             if (debug) printf("Beginning quickshift...\n");
 
-            cv::Mat postQuickShift = loadMatrix("../images/quickshifted_cyto-.yml");
+            cv::Mat postQuickShift = loadMatrix("../images/quickshifted_cyto.yml");
             if (postQuickShift.empty()) {
                 postQuickShift = runQuickshift(image.mat, kernelsize, maxdist);
                 saveMatrix("../images/quickshifted_cyto.yml", postQuickShift);
@@ -190,7 +191,7 @@ namespace segment {
             start = chrono::high_resolution_clock::now();
             if (debug) printf("Beginning Gaussian Mixture Modeling...\n");
 
-            cv::Mat gmmPredictions = loadMatrix("../images/gmmPredictions.yml-");
+            cv::Mat gmmPredictions = loadMatrix("../images/gmmPredictions.yml");
             if (gmmPredictions.empty()) {
                 gmmPredictions = runGmm(image.mat, hulls, maxGmmIterations);
                 saveMatrix("../images/gmmPredictions.yml", gmmPredictions);
@@ -211,7 +212,7 @@ namespace segment {
             vector<vector<cv::Point>> clumpBoundaries = findFinalClumpBoundaries(gmmPredictions, minAreaThreshold);
 
             outimg = drawColoredContours(image.mat, &clumpBoundaries);
-            //cv::imwrite("../images/clump_boundaries.png", outimg);
+            cv::imwrite("../images/clump_boundaries.png", outimg);
             //cv::imshow("Clump Segmentation", outimg);
             //cv::waitKey(0);
 
@@ -273,7 +274,13 @@ namespace segment {
             end = std::chrono::duration_cast<std::chrono::microseconds>(chrono::high_resolution_clock::now()-total).count() / 1000000.0;
 
             if (debug || totalTimed) printf("Segmentation finished, total time: %f\n", end);
+
+            double dice = evaluateSegmentation(&image);
+            cout << dice << endl;
+
             image.showFinalResults();
+
+
         }
     };
 

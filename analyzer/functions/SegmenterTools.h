@@ -1,5 +1,5 @@
-#ifndef SEGMENTER_CPP_SEGMENTERTOOLS_H
-#define SEGMENTER_CPP_SEGMENTERTOOLS_H
+#ifndef SEGMENTERTOOLS_H
+#define SEGMENTERTOOLS_H
 
 using namespace std;
 
@@ -21,4 +21,4 @@ namespace segment {
 
     cv::Mat* drawColoredContours(cv::Mat *img, vector<vector<cv::Point>> *contours, cv::RNG *rng);
 }
-#endif //SEGMENTER_CPP_SEGMENTERTOOLS_H
+#endif //SEGMENTERTOOLS_H

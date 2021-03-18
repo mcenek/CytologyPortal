@@ -1,5 +1,5 @@
-#ifndef SEGMENTER_CPP_INITIALCELLSEGMENTATION_H
-#define SEGMENTER_CPP_INITIALCELLSEGMENTATION_H
+#ifndef INITIALCELLSEGMENTATION_H
+#define INITIALCELLSEGMENTATION_H
 
 #include "opencv2/opencv.hpp"
 #include "../objects/Clump.h"
@@ -21,7 +21,7 @@ namespace segment {
     cv::Mat runInitialCellSegmentation(Image *image, int threshold1, int threshold2, bool debug = false);
 }
 
-#endif //SEGMENTER_CPP_INITIALCELLSEGMENTATION_H
+#endif //INITIALCELLSEGMENTATION_H
 
 
 /*

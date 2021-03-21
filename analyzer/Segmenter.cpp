@@ -242,9 +242,9 @@ namespace segment {
 
 
             cv::Mat initialCells = runInitialCellSegmentation(&image, threshold1, threshold2, debug);
-            //cv::imwrite("../images/initial_cell_boundaries.png", initialCells);
-            //cv::imshow("Initial Cell Segmentation", initialCells);
-            //cv::waitKey(0);
+            cv::imwrite("../images/initial_cell_boundaries.png", initialCells);
+            cv::imshow("Initial Cell Segmentation", initialCells);
+            cv::waitKey(0);
 
             end = std::chrono::duration_cast<std::chrono::microseconds>(chrono::high_resolution_clock::now()-start).count() / 1000000.0;
             if (debug) printf("Finished initial cell segmentation, time: %f\n", end);
@@ -275,8 +275,12 @@ namespace segment {
 
             if (debug || totalTimed) printf("Segmentation finished, total time: %f\n", end);
 
+            start = chrono::high_resolution_clock::now();
+            if (debug) printf("Beginning segmentation evaluation...\n");
             double dice = evaluateSegmentation(&image);
-            cout << dice << endl;
+            cout << "Dice coefficient: " << dice << endl;
+            end = std::chrono::duration_cast<std::chrono::microseconds>(chrono::high_resolution_clock::now()-start).count() / 1000000.0;
+            if (debug) printf("Finished segmentation evaluation, time: %f\n", end);
 
             image.showFinalResults();
 

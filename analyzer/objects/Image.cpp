@@ -1,12 +1,16 @@
 #include "Image.h"
 #include "Clump.h"
 #include "../functions/SegmenterTools.h"
+#include "boost/filesystem.hpp"
+
+using namespace std;
 
 namespace segment {
     Image::Image(string path) {
-        this->path = path;
+        boost::filesystem::path tmp(path);
+        this->path = tmp;
         this->padding = 1;
-        this->mat = readMatrix(path);
+        this->mat = readMatrix();
 
 
         int channels = this->mat.channels();
@@ -18,8 +22,8 @@ namespace segment {
 
     }
 
-    cv::Mat Image::readMatrix(string path) {
-        cv::Mat image = cv::imread(path);
+    cv::Mat Image::readMatrix() {
+        cv::Mat image = cv::imread(this->path.string());
 
         if (image.empty()) {
             cerr << "Could not read image at: " << path << endl;

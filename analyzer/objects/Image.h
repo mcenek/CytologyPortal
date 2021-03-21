@@ -1,9 +1,9 @@
 #ifndef IMAGE_H
 #define IMAGE_H
 
-
 #include "opencv2/opencv.hpp"
 #include "Clump.h"
+#include "boost/filesystem.hpp"
 
 using namespace std;
 
@@ -15,13 +15,14 @@ namespace segment {
 
         cv::Mat matPadded;
         int padding;
-        string path;
+
+        boost::filesystem::path path;
         vector<Clump> clumps;
 
         Image(string path);
 
         cv::Mat padMatrix();
-        cv::Mat readMatrix(string path);
+        cv::Mat readMatrix();
         void createClumps(vector<vector<cv::Point>> clumpBoundaries);
 
         void showFinalResults();

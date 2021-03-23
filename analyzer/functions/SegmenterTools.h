@@ -1,6 +1,8 @@
 #ifndef SEGMENTERTOOLS_H
 #define SEGMENTERTOOLS_H
 
+#include "opencv2/opencv.hpp"
+
 using namespace std;
 
 namespace segment {

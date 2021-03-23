@@ -1,7 +1,8 @@
 #include "OverlappingCellSegmentation.h"
 #include "opencv2/opencv.hpp"
-#include "LSM.h"
+#include "DRLSE.h"
 #include "SegmenterTools.h"
+#include "boost/filesystem.hpp"
 
 namespace segment {
     cv::Mat calcAllBinaryEnergy(Cell *cellI, Clump *clump, cv::Mat dirac) {
@@ -62,7 +63,8 @@ namespace segment {
        https://cs.adelaide.edu.au/~zhi/publications/paper_TIP_Jan04_2015_Finalised_two_columns.pdf
        http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.231.9150&rep=rep1&type=pdf
      */
-    void runOverlappingSegmentation(vector<Clump> *clumps) {
+    void runOverlappingSegmentation(Image *image) {
+        vector<Clump> *clumps = &image->clumps;
         //Initialize set up parameters
         double dt = 5; //Time step
         double epsilon = 1.5; //Pixel spacing
@@ -116,7 +118,9 @@ namespace segment {
 
             for (unsigned int cellIdxI = 0; cellIdxI < clump->cells.size(); cellIdxI++) {
                 vector<cv::Point> finalContour = finalContours[cellIdxI];
-                std::ofstream outFile("../images/clump" + to_string(clumpIdx) + "cell" + to_string(cellIdxI) + ".txt");
+                string fileStem = "clump" + to_string(clumpIdx) + "cell" + to_string(cellIdxI);
+                boost::filesystem::path writePath = image->getWritePath(fileStem, ".txt");
+                std::ofstream outFile(writePath.string());
                 for (cv::Point point : finalContour) {
                     outFile << point.x << " " << point.y << endl;
                 }

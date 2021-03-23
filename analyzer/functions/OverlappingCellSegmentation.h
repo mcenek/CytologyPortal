@@ -18,7 +18,7 @@ namespace segment {
 
     bool clumpHasSingleCell(Clump *clump);
 
-    void runOverlappingSegmentation(vector<Clump> *clumps);
+    void runOverlappingSegmentation(Image *image);
 
     void updatePhi(Cell *cellI, Clump *clump, double dt, double epsilon, double mu, double kappa, double chi);
 

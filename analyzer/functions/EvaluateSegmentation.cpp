@@ -79,7 +79,6 @@ namespace segment {
         for (int i = 0; i < allDice.size(); i++) {
             for (int j = 0; j < allDice[i].size(); j++) {
                 double dice = allDice[i][j];
-                //cout << i << j << " " << dice << endl;
                 if (dice > maxDice) {
                     maxDice = dice;
                     location[0] = i;
@@ -108,9 +107,11 @@ namespace segment {
 
         boost::filesystem::path gtLocation(image->path.parent_path());
         gtLocation /= image->path.stem();
+        gtLocation += "_GT";
+        gtLocation /= image->path.stem();
         gtLocation += "_CytoGT";
 
-        boost::filesystem::recursive_directory_iterator iter(gtLocation), eod;
+        boost::filesystem::directory_iterator iter(gtLocation), eod;
         BOOST_FOREACH(boost::filesystem::path const& file, make_pair(iter, eod)){
             if (is_regular_file(file)) {
                 if (file.has_extension()) {

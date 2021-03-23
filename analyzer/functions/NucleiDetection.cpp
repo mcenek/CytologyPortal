@@ -4,8 +4,6 @@
 #include "SegmenterTools.h"
 
 namespace segment {
-    cv::Scalar pink = cv::Scalar(1.0, 0, 1.0);
-    int allContours = -1;
 
     void removeClumpsWithoutNuclei(vector<Clump> *clumps) {
         // remove clumps that don't have any nuclei
@@ -72,7 +70,7 @@ namespace segment {
 
         //TODO - "Regions found" is currently a redundant print
         /*if (debug) {
-      printf("Regions found: %lu\n", regions.size());
+      image->log("Regions found: %lu\n", regions.size());
 
       for (unsigned int i = 0; i < regions.size(); i++) {
         //Display region
@@ -89,7 +87,10 @@ namespace segment {
         return regions;
     }
 
-    cv::Mat runNucleiDetection(cv::Mat image, vector<Clump> *clumps, int delta, int minArea, int maxArea, double maxVariation, double minDiversity, bool debug) {
+    cv::Mat runNucleiDetection(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity, bool debug) {
+        cv::Mat mat = image->mat;
+
+        vector<Clump> *clumps = &image->clumps;
         for (unsigned int i = 0; i < clumps->size(); i++) {
             cv::Mat clump = (*clumps)[i].extract();
 
@@ -97,26 +98,29 @@ namespace segment {
             cv::cvtColor(clump, clump, CV_RGB2GRAY);
             //clahe->apply(clump, clump);
             cv::cvtColor(clump, clump, CV_GRAY2RGB);
+
+
             (*clumps)[i].nucleiBoundaries = runMser(clump, (*clumps)[i].computeOffsetContour(),
                                                  delta, minArea, maxArea, maxVariation,
                                                  minDiversity, debug);
-            printf("Clump %u, nuclei boundaries found: %lu\n", i, (*clumps)[i].nucleiBoundaries.size());
+            image->log("Clump %u, nuclei boundaries found: %lu\n", i, (*clumps)[i].nucleiBoundaries.size());
         }
 
         // write all the found clumps with nuclei
-        cv::Mat nucleiImg = postNucleiDetection(image, clumps);
-        image.convertTo(nucleiImg, CV_64FC3);
+        cv::Mat nucleiImg = postNucleiDetection(image);
+        mat.convertTo(nucleiImg, CV_64FC3);
 
         return nucleiImg;
     }
 
-    cv::Mat postNucleiDetection(cv::Mat image, vector<Clump> *clumps) {
+    cv::Mat postNucleiDetection(Image *image) {
+        cv::Mat nucleiImg = image->mat;
+        vector<Clump> *clumps = &image->clumps;
         removeClumpsWithoutNuclei(clumps);
-        cv::Mat nucleiImg = image;
         for (unsigned int i = 0; i < clumps->size(); i++) {
             Clump *clump = &(*clumps)[i];
             cv::Mat clumpImg = clump->extract();
-            cv::drawContours(nucleiImg, (*clumps)[i].undoOffsetContour(), allContours, pink, 2);
+            cv::drawContours(nucleiImg, (*clumps)[i].undoOffsetContour(), -1, 0, 2);
             clump->convertNucleiBoundariesToContours();
         }
         return nucleiImg;

@@ -31,8 +31,10 @@ compliation example: g++ -std=gnu++17 segment.cpp -l boost_program_options
 //#include <napi.h>
 #include <iostream>
 #include <opencv2/opencv.hpp>
-#include "Segmenter.cpp"
+#include "Segmenter.h"
 #include <boost/program_options.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/foreach.hpp>
 
 using namespace std;
 using namespace boost::program_options;
@@ -53,7 +55,16 @@ int main (int argc, const char * argv[])
     double minAreaThreshold = 1000.0;
     // MSER params
     int delta = 3, minArea = 120, maxArea = 600;
-    double maxVariation = 0.12, minDiversity = 0.25;
+    double maxVariation = 0.3, minDiversity = 0.25;
+    // Cell segmentation params - TODO: reference these
+    double mi = 0.2;
+    double eta = 0.00000001;
+    double ni = FLT_MIN;
+    int lambda1 = 1;
+    int lambda2 = 1;
+    int eps = 1;
+    double dt = 0.5; // timestep
+    int steps = 2;
 
     try
     {
@@ -71,7 +82,8 @@ int main (int argc, const char * argv[])
           ("delta", value<int>()->default_value(delta), "Delta")
           ("minArea", value<int>()->default_value(minArea), "Min area")
           ("maxArea", value<int>()->default_value(maxArea), "Max area")
-          ("image,i", value<std::string>()->default_value("./images/EDF/EDF000.png"), "Input image");
+          ("image,i", value<std::string>()->default_value(""), "Input image")
+          ("directory,d", value<std::string>()->default_value(""), "Input directory");
         variables_map vm;
         store(parse_command_line(argc, argv, desc), vm);
         notify(vm);
@@ -99,8 +111,45 @@ int main (int argc, const char * argv[])
             vm["minDiversity"].as<float>()
         );
 
-        cout << "Segmenting \"" << vm["image"].as<std::string>() << "\"" << endl;
-        seg.runSegmentation(vm["image"].as<std::string>());
+        vector<string> images;
+
+	    string directory = vm["directory"].as<std::string>();
+        string image = vm["image"].as<std::string>();
+
+        if (directory.empty() && image.empty()) {
+            image = "./images/EDF/EDF000.png";
+        }
+
+        if (!directory.empty()) {
+
+            boost::filesystem::path path(directory);
+            if (boost::filesystem::is_directory(directory)) {
+                boost::filesystem::directory_iterator iter(path), eod;
+                BOOST_FOREACH(boost::filesystem::path const& file, make_pair(iter, eod)){
+                    if (is_regular_file(file)) {
+                        if (file.has_extension()) {
+                            if (file.extension().string() == ".png") {
+                                images.push_back(file.string());
+                            }
+                        }
+                    }
+                }
+            } else {
+                printf("Not a directory: %s\n", directory.c_str());
+            }
+
+        }
+
+        if (!image.empty()) {
+            images.push_back(image);
+        }
+
+        sort(images.begin(), images.end());
+
+        for (string image : images) {
+            seg.runSegmentation(image);
+        }
+
     }
     catch (const exception &ex)
     {

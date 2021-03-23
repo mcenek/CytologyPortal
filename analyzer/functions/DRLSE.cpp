@@ -1,6 +1,6 @@
 #include "opencv2/opencv.hpp"
 #include "../objects/Clump.h"
-#include "LSM.h"
+#include "DRLSE.h"
 #include <ctime>
 using namespace std;
 
@@ -42,8 +42,6 @@ namespace segment {
             vector <cv::Mat> gradientX = calcGradient(x);
             vector <cv::Mat> gradientY = calcGradient(y);
             cv::Mat gradientXX = getGradientX(gradientX);
-            cv::Mat gradientXY = getGradientY(gradientX);
-            cv::Mat gradientYX = getGradientX(gradientY);
             cv::Mat gradientYY = getGradientY(gradientY);
             return gradientXX + gradientYY;
         }

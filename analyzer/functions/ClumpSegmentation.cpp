@@ -1,7 +1,7 @@
 #include "ClumpSegmentation.h"
 #include "opencv2/opencv.hpp"
 #include "../VLFeatWrapper.cpp"
-#include "LSM.h"
+#include "DRLSE.h"
 #include "SegmenterTools.h"
 
 using namespace std;
@@ -36,20 +36,21 @@ namespace segment {
          Returns:
          cv::Mat = image after quickshift is applied
          Params:
-         cv::Mat img = the image
+         cv::Mat mat = the image
          int kernelsize = the kernel or window size of the quickshift applied
          int maxdist = the largest distance a pixel can be from it's root
        */
-    cv::Mat runQuickshift(cv::Mat img, int kernelsize, int maxdist, bool debug) {
-        int channels = img.channels();
-        int width = img.cols;
-        int height = img.rows;
+    cv::Mat runQuickshift(Image *image, int kernelsize, int maxdist, bool debug) {
+        cv::Mat mat = image->mat;
+        int channels = mat.channels();
+        int width = mat.cols;
+        int height = mat.rows;
 
         cv::Mat tempMat;
-        img.copyTo(tempMat);
+        mat.copyTo(tempMat);
         tempMat.convertTo(tempMat, CV_64FC3, 1 / 255.0);
-        double *cvimg = (double *) tempMat.data;
-        double *vlimg = (double *) calloc(channels * width * height, sizeof(double));
+        double *cvmat = (double *) tempMat.data;
+        double *vlmat = (double *) calloc(channels * width * height, sizeof(double));
 
         // create VLFeatWrapper object
         VLFeatWrapper vlf_wrapper = VLFeatWrapper(width, height, channels);
@@ -57,18 +58,18 @@ namespace segment {
         vlf_wrapper.verifyVLFeat();
 
         // apply quickshift from VLFeat
-        vlf_wrapper.convertOPENCV_VLFEAT(cvimg, vlimg);
-        int superpixelcount = vlf_wrapper.quickshift(vlimg, kernelsize, maxdist);
-        vlf_wrapper.convertVLFEAT_OPENCV(vlimg, cvimg);
+        vlf_wrapper.convertOPENCV_VLFEAT(cvmat, vlmat);
+        int superpixelcount = vlf_wrapper.quickshift(vlmat, kernelsize, maxdist);
+        vlf_wrapper.convertVLFEAT_OPENCV(vlmat, cvmat);
 
-        cv::Mat postQuickShift = cv::Mat(height, width, CV_64FC3, cvimg);
-        cv::Mat outimg;
-        postQuickShift.copyTo(outimg);
-        outimg.convertTo(outimg, CV_8UC3, 255);
-        free(vlimg);
+        cv::Mat postQuickShift = cv::Mat(height, width, CV_64FC3, cvmat);
+        cv::Mat outmat;
+        postQuickShift.copyTo(outmat);
+        outmat.convertTo(outmat, CV_8UC3, 255);
+        free(vlmat);
 
-        if (debug) printf("Super pixels found via quickshift: %i\n", superpixelcount);
-        return outimg;
+        if (debug) image->log("Super pixels found via quickshift: %i\n", superpixelcount);
+        return outmat;
     }
 
     /*
@@ -76,15 +77,15 @@ namespace segment {
       Returns:
       cv::Mat = edges found post dilate/erode
       Params:
-      cv::Mat img = image to find edged in
+      cv::Mat mat = image to find edged in
       int threshold1 = first threshold for the hysteresis procedure.
       int threshold2 = second threshold for the hysteresis procedure.
     */
-    cv::Mat runCanny(cv::Mat img, int threshold1, int threshold2, bool erodeFlag) {
+    cv::Mat runCanny(cv::Mat mat, int threshold1, int threshold2, bool erodeFlag) {
         cv::Mat postEdgeDetection;
-        img.copyTo(postEdgeDetection);
+        mat.copyTo(postEdgeDetection);
         cv::Mat blurred;
-        cv::blur(img, blurred, cv::Size(2, 2)); //TODO: Shouldn't this be a cv::GaussianBlur..?
+        cv::blur(mat, blurred, cv::Size(2, 2)); //TODO: Shouldn't this be a cv::GaussianBlur..?
         cv::Canny(blurred, postEdgeDetection, threshold1, threshold2);
 
         if (erodeFlag) {
@@ -111,26 +112,26 @@ namespace segment {
       Returns:
       cv::Mat = labels found per pixel
       Params:
-      cv::Mat img = image to process
+      cv::Mat mat = image to process
       vector<vector<cv::Point>> hulls = convex hulls to provide initial labeling
       int maxGmmIterations = maximum number of iterations to allow the gmm to train
     */
-    cv::Mat runGmm(cv::Mat img, vector<vector<cv::Point>> hulls, int maxGmmIterations) {
-        cv::Mat grayscaleImg;
-        img.convertTo(grayscaleImg, CV_8UC3);
-        cv::cvtColor(grayscaleImg, grayscaleImg, CV_BGR2GRAY);
+    cv::Mat runGmm(cv::Mat mat, vector<vector<cv::Point>> hulls, int maxGmmIterations) {
+        cv::Mat grayscaleMat;
+        mat.convertTo(grayscaleMat, CV_8UC3);
+        cv::cvtColor(grayscaleMat, grayscaleMat, CV_BGR2GRAY);
 
         cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(2);
-        clahe->apply(grayscaleImg, grayscaleImg);
+        clahe->apply(grayscaleMat, grayscaleMat);
 
 
-        grayscaleImg.convertTo(grayscaleImg, CV_64FC1);
-        grayscaleImg = grayscaleImg.reshape(0, grayscaleImg.rows * grayscaleImg.cols);
+        grayscaleMat.convertTo(grayscaleMat, CV_64FC1);
+        grayscaleMat = grayscaleMat.reshape(0, grayscaleMat.rows * grayscaleMat.cols);
 
         //Foreground black, background white
-        cv::Mat probCluster1 = cv::Mat::ones(img.rows, img.cols, CV_32F);
+        cv::Mat probCluster1 = cv::Mat::ones(mat.rows, mat.cols, CV_32F);
         cv::drawContours(probCluster1, hulls, -1, (0), -1);
-        probCluster1 = probCluster1.reshape(0, img.rows * img.cols);
+        probCluster1 = probCluster1.reshape(0, mat.rows * mat.cols);
 
         //Foreground white, background black
         cv::Mat probCluster2;
@@ -147,25 +148,25 @@ namespace segment {
         cell_gmm = cv::ml::EM::create();
         cell_gmm->setTermCriteria(termCrit);
         cell_gmm->setClustersNumber(2);
-        cell_gmm->trainM(grayscaleImg, initialProbMat, cv::noArray(), labels, cv::noArray());
+        cell_gmm->trainM(grayscaleMat, initialProbMat, cv::noArray(), labels, cv::noArray());
 
-        labels = labels.reshape(0, img.rows);
+        labels = labels.reshape(0, mat.rows);
 
-        cv::Mat outimg;
-        labels.copyTo(outimg);
-        outimg.convertTo(outimg, CV_8UC1, 255);
+        cv::Mat outmat;
+        labels.copyTo(outmat);
+        outmat.convertTo(outmat, CV_8UC1, 255);
 
-        outimg = runGmmCleanup(img, outimg);
+        outmat = runGmmCleanup(mat, outmat);
 
-        return outimg;
+        return outmat;
     }
 
-    cv::Mat runGmmCleanup(cv::Mat im, cv::Mat gmmPredictions) {
+    cv::Mat runGmmCleanup(cv::Mat mat, cv::Mat gmmPredictions) {
         float timestep = 5;
         float mu = 0.04;
         float epsilon = 1.5;
 
-        cv::Mat edgeEnforcer = calcEdgeEnforcer(im);
+        cv::Mat edgeEnforcer = calcEdgeEnforcer(mat);
         cv::Mat initialPhi;
 
         gmmPredictions.convertTo(initialPhi, CV_32FC1, 1.0/255.0);
@@ -200,17 +201,17 @@ namespace segment {
     Returns:
     vector<vector<cv::Point> > = the contours found
     Params:
-    cv::Mat img = the input image
+    cv::Mat mat = the input image
     int minAreaThreshold = the minimum area, all contours smaller than this are discarded
     */
-    vector<vector<cv::Point>> findFinalClumpBoundaries(cv::Mat img, double minAreaThreshold) {
+    vector<vector<cv::Point>> findFinalClumpBoundaries(cv::Mat mat, double minAreaThreshold) {
         //Crop gmm because some gmm outputs have a white border which interferes with find contours
         int padding = 2;
-        cv::Rect cropRect(padding, padding, img.cols - 2 * padding, img.rows - 2 * padding);
-        img = img(cropRect);
+        cv::Rect cropRect(padding, padding, mat.cols - 2 * padding, mat.rows - 2 * padding);
+        mat = mat(cropRect);
 
         vector<vector<cv::Point>> contours;
-        cv::findContours(img, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        cv::findContours(mat, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
 
         vector<vector<cv::Point>> clumpBoundaries = vector<vector<cv::Point> >();
         for (unsigned int i = 0; i < contours.size(); i++) {

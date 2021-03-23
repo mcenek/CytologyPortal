@@ -2,13 +2,11 @@
 #include "ClumpSegmentation.h"
 #include "opencv2/opencv.hpp"
 #include "../objects/Clump.h"
-#include "LSM.h"
+#include "DRLSE.h"
 #include "SegmenterTools.h"
+#include "boost/filesystem.hpp"
 
 namespace segment {
-    const int allContours = -1;
-    const cv::Scalar pink = cv::Scalar(1.0, 0, 1.0);
-
     vector<pair<Cell*, double>> findNucleiDistances(cv::Point point, Clump *clump) {
         // find the distance to each nucleus
         vector<pair<Cell*, double>> nucleiDistances;
@@ -175,7 +173,7 @@ namespace segment {
             Clump *clump = &(*clumps)[c];
             clump->createCells();
             // sanity check: view all the cell array sizes for each clump
-            //printf("Clump: %u, # of nuclei boundaries: %lu, # of cells: %lu\n",
+            //image->log("Clump: %u, # of nuclei boundaries: %lu, # of cells: %lu\n",
             //       c, clump->nucleiBoundaries.size(), clump->cells.size());
         }
 
@@ -183,12 +181,14 @@ namespace segment {
         cv::Mat outimg = image->mat.clone();
         cv::RNG rng(12345);
 
-        for (unsigned int c = 0; c < clumps->size(); c++) {
-            Clump *clump = &(*clumps)[c];
+        for (unsigned int clumpIdx = 0; clumpIdx < clumps->size(); clumpIdx++) {
+            Clump *clump = &(*clumps)[clumpIdx];
 
             for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
                 vector<cv::Point> contour;
-                std::ifstream inFile("../images/clump" + to_string(c) + "cell" + to_string(cellIdx) + ".txt");
+                string fileStem = "clump" + to_string(clumpIdx) + "cell" + to_string(cellIdx);
+                boost::filesystem::path loadPath = image->getWritePath(fileStem, ".txt");
+                std::ifstream inFile(loadPath.string());
                 if (!inFile.fail()) {
                     int x, y;
                     while (inFile >> x >> y) {
@@ -201,11 +201,11 @@ namespace segment {
             if (clump->finalCellContours.size() != clump->cells.size()) {
                 clump->finalCellContours.clear();
             } else {
-                cout << "Loaded contours from clump " << c << endl;
+                cout << "Loaded contours from clump " << clumpIdx << endl;
                 continue;
             }
 
-            associateClumpBoundariesWithCell(clump, c, debug);
+            associateClumpBoundariesWithCell(clump, clumpIdx, debug);
             //generateOtherCellBoundaries(clump);
 
             getContoursFromMask(clump);

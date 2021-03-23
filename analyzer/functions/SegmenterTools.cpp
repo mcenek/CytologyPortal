@@ -19,6 +19,7 @@ namespace segment {
         }
     }
 
+
     cv::Mat drawContour(cv::Mat img, vector<cv::Point> contour) {
         vector<vector<cv::Point>> contours = {contour};
         cv::drawContours(img, contours, 0, (255,255,255), 2);
@@ -36,8 +37,7 @@ namespace segment {
         cout << endl;
     }
 
-    float angleBetween(const cv::Point v1, const cv::Point v2)
-    {
+    float angleBetween(const cv::Point v1, const cv::Point v2){
         float dy = v1.y - v2.y;
         float dx = v1.x - v2.x;
         float theta = atan(dy/dx);

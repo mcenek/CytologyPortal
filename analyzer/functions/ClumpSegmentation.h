@@ -9,18 +9,18 @@ using namespace std;
 namespace segment {
     cv::Mat drlse_denoise(cv::Mat phi, cv::Mat g, float lambda, float mu, float alpha, float epsilon, float timestep);
 
-    cv::Mat runQuickshift(cv::Mat img, int kernelsize, int maxdist, bool debug = false);
+    cv::Mat runQuickshift(Image *image, int kernelsize, int maxdist, bool debug = false);
 
     /*
       runCanny runs canny edge detection on an image, and dilates and erodes it to close holes
       Returns:
       cv::Mat = edges found post dilate/erode
       Params:
-      cv::Mat img = image to find edged in
+      cv::Mat mat = image to find edged in
       int threshold1 = first threshold for the hysteresis procedure.
       int threshold2 = second threshold for the hysteresis procedure.
     */
-    cv::Mat runCanny(cv::Mat img, int threshold1, int threshold2, bool erodeFlag = false);
+    cv::Mat runCanny(cv::Mat mat, int threshold1, int threshold2, bool erodeFlag = false);
 
     vector<vector<cv::Point>> runFindConvexHulls(vector<vector<cv::Point>> contours);
 
@@ -30,13 +30,13 @@ namespace segment {
       Returns:
       cv::Mat = labels found per pixel
       Params:
-      cv::Mat img = image to process
+      cv::Mat mat = image to process
       vector<vector<cv::Point> > hulls = convex hulls to provide initial labeling
       int maxGmmIterations = maximum number of iterations to allow the gmm to train
     */
-    cv::Mat runGmm(cv::Mat img, vector<vector<cv::Point>> hulls, int maxGmmIterations);
+    cv::Mat runGmm(cv::Mat mat, vector<vector<cv::Point>> hulls, int maxGmmIterations);
 
-    cv::Mat runGmmCleanup(cv::Mat im, cv::Mat gmmPredictions);
+    cv::Mat runGmmCleanup(cv::Mat mat, cv::Mat gmmPredictions);
 
     /*
     findFinalClumpBoundaries takes an image and a threshold and returns all the contours whose
@@ -44,10 +44,10 @@ namespace segment {
     Returns:
     vector<vector<cv::Point> > = the contours found
     Params:
-    cv::Mat img = the input image
+    cv::Mat mat = the input image
     int minAreaThreshold = the minimum area, all contours smaller than this are discarded
     */
-    vector<vector<cv::Point>> findFinalClumpBoundaries(cv::Mat img, double minAreaThreshold);
+    vector<vector<cv::Point>> findFinalClumpBoundaries(cv::Mat mat, double minAreaThreshold);
 }
 
 

@@ -22,11 +22,12 @@ namespace segment {
         // MSER params
         int delta, minArea, maxArea; //minArea was 120
         double maxVariation, minDiversity;
+        double minCircularity;
 
 
     private:
         // internal attributes
-        bool debug = false; //TODO - Add this as a command line arg
+        bool debug = true; //TODO - Add this as a command line arg
         cv::Scalar pink;
         int allContours = -1;
         bool totalTimed = true;
@@ -34,7 +35,7 @@ namespace segment {
 
     public:
         Segmenter(int kernelsize, int maxdist, int thres1, int thres2, int maxGmmIterations, int minAreaThreshold,
-                  int delta, int minArea, int maxArea, double maxVariation, double minDiversity);
+                  int delta, int minArea, int maxArea, double maxVariation, double minDiversity, double minCircularity);
 
         void setCommonValues();
 

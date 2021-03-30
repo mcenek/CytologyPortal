@@ -56,6 +56,7 @@ int main (int argc, const char * argv[])
     // MSER params
     int delta = 3, minArea = 120, maxArea = 600;
     double maxVariation = 0.3, minDiversity = 0.25;
+    double minCircularity = 0.5;
     // Cell segmentation params - TODO: reference these
     double mi = 0.2;
     double eta = 0.00000001;
@@ -73,6 +74,7 @@ int main (int argc, const char * argv[])
           ("help,h", "Help screen")
           ("maxVariation", value<float>()->default_value(maxVariation), "Max variation")
           ("minDiversity", value<float>()->default_value(minDiversity), "Min diversity")
+          ("minCircularity", value<float>()->default_value(minCircularity), "Min circularity")
           ("minAreaThreshold", value<float>()->default_value(minAreaThreshold), "Min area threshold")
           ("kernelsize", value<int>()->default_value(kernelsize), "Kernel size")
           ("maxdist", value<int>()->default_value(maxdist), "Max distance")
@@ -108,7 +110,8 @@ int main (int argc, const char * argv[])
             vm["minArea"].as<int>(),
             vm["maxArea"].as<int>(),
             vm["maxVariation"].as<float>(),
-            vm["minDiversity"].as<float>()
+            vm["minDiversity"].as<float>(),
+            vm["minCircularity"].as<float>()
         );
 
         vector<string> images;

@@ -25,8 +25,8 @@ namespace segment {
                                       int minArea, int maxArea, double maxVariation,
                                       double minDiversity, bool debug = false);
 
-    cv::Mat runNucleiDetection(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity, bool debug);
-    cv::Mat postNucleiDetection(Image *image);
+    cv::Mat runNucleiDetection(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity, double minCircularity, bool debug);
+    cv::Mat postNucleiDetection(Image *image, double minCircularity);
 }
 
 

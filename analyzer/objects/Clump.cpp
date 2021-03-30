@@ -154,6 +154,20 @@ namespace segment {
         cv::findContours(regionMask, this->nucleiBoundaries, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
     }
 
+    void Clump::filterNuclei(double minCircularity) {
+        vector<vector<cv::Point>> filteredNuclei;
+        for (int i = 0; i < this->nucleiBoundaries.size(); i++) {
+            vector<cv::Point> *nucleus = &this->nucleiBoundaries[i];
+            double area = cv::contourArea(*nucleus);
+            double perimeter = cv::arcLength(*nucleus, true);
+            double circularity = 4 * M_PI * area / pow(perimeter, 2.0);
+            if (circularity >= minCircularity) {
+                cout << circularity << endl;
+                filteredNuclei.push_back(*nucleus);
+            }
+        }
+        this->nucleiBoundaries = filteredNuclei;
+    }
     void Clump::generateNucleiMasks() {
         if(this->nucleiBoundaries.empty())
             cerr << "nucleiBoundaries must be defined and present before Clump::generateNucleiMasks can be run." << "\n";

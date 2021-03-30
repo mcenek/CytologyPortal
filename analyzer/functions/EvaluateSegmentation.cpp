@@ -141,7 +141,6 @@ namespace segment {
         vector<double> finalDice;
 
         for (int k = 0; k < groundTruthMasks.size() && k < estimatedMasks.size(); k++) {
-
             int *location = findMaxDiceLocation(allDice);
             int groundTruth = location[0];
             int estimated = location[1];
@@ -152,6 +151,7 @@ namespace segment {
                 allDice[groundTruth][j] = 0;
             }
         }
+
 
         double sumDice;
         for (double dice : finalDice) {

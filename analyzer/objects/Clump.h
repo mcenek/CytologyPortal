@@ -46,6 +46,7 @@ namespace segment {
         vector<cv::Point> undoBoundingRect(vector<cv::Point> tmpBoundaries);
         void createCells();
         void convertNucleiBoundariesToContours();
+        void filterNuclei(double threshold = 0.5);
         void generateNucleiMasks();
         cv::Mat calcClumpPrior();
         vector<vector<cv::Point>> getFinalCellContours();

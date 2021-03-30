@@ -27,7 +27,7 @@ namespace segment {
     // Constructor
     Segmenter::Segmenter(int kernelsize, int maxdist, int thres1, int thres2, int maxGmmIterations,
                          int minAreaThreshold, int delta, int minArea, int maxArea, double maxVariation,
-                         double minDiversity) {
+                         double minDiversity, double minCircularity) {
         setCommonValues();
         this->kernelsize = kernelsize;
         this->maxdist = maxdist;
@@ -40,6 +40,7 @@ namespace segment {
         this->maxArea = maxArea;
         this->maxVariation = maxVariation;
         this->minDiversity = minDiversity;
+        this->minCircularity = minCircularity;
     }
 
     // Constructor helper
@@ -49,6 +50,7 @@ namespace segment {
 
 
     void Segmenter::runSegmentation(string fileName) {
+        debug = true;
         auto total = chrono::high_resolution_clock::now();
 
         double end;
@@ -158,7 +160,7 @@ namespace segment {
         start = chrono::high_resolution_clock::now();
         if (debug) image.log("Beginning MSER nuclei detection...\n");
 
-        cv::Mat nucleiImg = runNucleiDetection(&image, delta, minArea, maxArea, maxVariation, minDiversity, debug);
+        cv::Mat nucleiImg = runNucleiDetection(&image, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);
 
         //Save a snapshot of nuclei across all clumps
         image.writeImage("nuclei_boundaries.png", nucleiImg);
@@ -169,7 +171,6 @@ namespace segment {
 
         start = chrono::high_resolution_clock::now();
         if (debug) image.log("Beginning initial cell segmentation...\n");
-
 
         cv::Mat initialCells = runInitialCellSegmentation(&image, threshold1, threshold2, debug);
         image.writeImage("initial_cell_boundaries.png", initialCells);

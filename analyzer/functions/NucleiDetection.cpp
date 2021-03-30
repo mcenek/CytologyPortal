@@ -87,7 +87,7 @@ namespace segment {
         return regions;
     }
 
-    cv::Mat runNucleiDetection(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity, bool debug) {
+    cv::Mat runNucleiDetection(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity, double minCircularity, bool debug) {
         cv::Mat mat = image->mat;
 
         vector<Clump> *clumps = &image->clumps;
@@ -99,30 +99,33 @@ namespace segment {
             //clahe->apply(clump, clump);
             cv::cvtColor(clump, clump, CV_GRAY2RGB);
 
-
-            (*clumps)[i].nucleiBoundaries = runMser(clump, (*clumps)[i].computeOffsetContour(),
+            vector<vector<cv::Point>> nuclei = runMser(clump, (*clumps)[i].computeOffsetContour(),
                                                  delta, minArea, maxArea, maxVariation,
                                                  minDiversity, debug);
+            (*clumps)[i].nucleiBoundaries = nuclei;
             image->log("Clump %u, nuclei boundaries found: %lu\n", i, (*clumps)[i].nucleiBoundaries.size());
         }
 
         // write all the found clumps with nuclei
-        cv::Mat nucleiImg = postNucleiDetection(image);
+        cv::Mat nucleiImg = postNucleiDetection(image, minCircularity);
         mat.convertTo(nucleiImg, CV_64FC3);
-
         return nucleiImg;
     }
 
-    cv::Mat postNucleiDetection(Image *image) {
+    cv::Mat postNucleiDetection(Image *image, double minCircularity) {
         cv::Mat nucleiImg = image->mat;
         vector<Clump> *clumps = &image->clumps;
-        removeClumpsWithoutNuclei(clumps);
         for (unsigned int i = 0; i < clumps->size(); i++) {
             Clump *clump = &(*clumps)[i];
-            cv::Mat clumpImg = clump->extract();
-            cv::drawContours(nucleiImg, (*clumps)[i].undoOffsetContour(), -1, 0, 2);
-            clump->convertNucleiBoundariesToContours();
+            if (clump->nucleiBoundaries.size() > 0) {
+                cv::Mat clumpImg = clump->extract();
+                clump->convertNucleiBoundariesToContours();
+                clump->filterNuclei(minCircularity);
+                cv::drawContours(nucleiImg, (*clumps)[i].undoOffsetContour(), -1, 0, 2);
+            }
+
         }
+        removeClumpsWithoutNuclei(clumps);
         return nucleiImg;
     }
 }

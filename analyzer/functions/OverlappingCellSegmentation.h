@@ -10,13 +10,12 @@ namespace segment {
        http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.231.9150&rep=rep1&type=pdf
      */
 
-    cv::Mat calcAllBinaryEnergy(Cell *cellI, Clump *clump, cv::Mat dirac);
-
-    cv::Mat calcBinaryEnergy(cv::Mat mat, cv::Mat clumpPrior, cv::Mat edgeEnforcer, cv::Mat dirac);
 
     bool isConverged(Cell *cellI);
 
     bool clumpHasSingleCell(Clump *clump);
+
+    void startOverlappingCellSegmentationThread(Image *image, Clump *clump, int clumpIdx);
 
     void runOverlappingSegmentation(Image *image);
 

@@ -16,6 +16,7 @@
 #include "functions/InitialCellSegmentation.h"
 #include "functions/NucleiDetection.h"
 #include "functions/OverlappingCellSegmentation.h"
+#include "functions/Preprocessing.h"
 
 extern "C" {
 #include "vl/quickshift.h"
@@ -50,6 +51,7 @@ namespace segment {
 
 
     void Segmenter::runSegmentation(string fileName) {
+
         debug = true;
         auto total = chrono::high_resolution_clock::now();
 
@@ -57,16 +59,20 @@ namespace segment {
 
         Image image = Image(fileName);
 
+
         cv::Mat outimg;
 
 
         auto startClumpSeg = chrono::high_resolution_clock::now();
         auto start = chrono::high_resolution_clock::now();
+
+
+        /*
         if (debug) image.log("Beginning quickshift...\n");
 
         cv::Mat postQuickShift = image.loadMatrix("quickshifted_cyto.yml");
         if (postQuickShift.empty()) {
-            postQuickShift = runQuickshift(&image, kernelsize, maxdist);
+            postQuickShift = runQuickshift(&image.mat, kernelsize, maxdist);
             image.writeMatrix("quickshifted_cyto.yml", postQuickShift);
             image.writeImage("quickshifted_cyto.png", postQuickShift);
         }
@@ -114,12 +120,13 @@ namespace segment {
                 chrono::high_resolution_clock::now() - start).count() / 1000000.0;
         if (debug) image.log("Finished with CCA and convex hulls, time: %f\n", end);
 
+         */
         start = chrono::high_resolution_clock::now();
         if (debug) image.log("Beginning Gaussian Mixture Modeling...\n");
 
         cv::Mat gmmPredictions = image.loadMatrix("gmmPredictions.yml");
         if (gmmPredictions.empty()) {
-            gmmPredictions = runGmm(image.mat, hulls, maxGmmIterations);
+            gmmPredictions = runPreprocessing(&image, kernelsize, maxdist, threshold1, threshold2, maxGmmIterations);
             image.writeMatrix("gmmPredictions.yml", gmmPredictions);
 
             cv::Mat temp;
@@ -211,6 +218,9 @@ namespace segment {
 
         if (debug || totalTimed) image.log("Segmentation finished, total time: %f\n", end);
 
+        outimg = image.getFinalResult();
+        image.writeImage("cell_boundaries.png", outimg);
+
         start = chrono::high_resolution_clock::now();
         if (debug) image.log("Beginning segmentation evaluation...\n");
         double dice = evaluateSegmentation(&image);
@@ -219,8 +229,7 @@ namespace segment {
                 chrono::high_resolution_clock::now() - start).count() / 1000000.0;
         if (debug) image.log("Finished segmentation evaluation, time: %f\n", end);
 
-        outimg = image.getFinalResult();
-        image.writeImage("cell_boundaries.png", outimg);
+
         if (debug) {
             //cv::imshow("Overlapping Cell Segmentation", outimg);
             //cv::waitKey(0);

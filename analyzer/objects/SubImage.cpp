@@ -1,0 +1,65 @@
+#include "SubImage.h"
+#include "opencv2/opencv.hpp"
+#include "../functions/Preprocessing.h"
+
+namespace segment {
+    SubImage::SubImage(cv::Mat *mat, int i, int j, int subMatWidth, int subMatHeight, int paddingWidth, int paddingHeight) {
+        int x = i * subMatWidth;
+        int y = j * subMatHeight;
+        this->mat = crop(mat, x, y, subMatWidth, subMatHeight, paddingWidth, paddingHeight);
+        this->i = i;
+        this->j = j;
+        this->maxI = ceil(mat->cols / (double) subMatWidth) - 1;
+        this->maxJ = ceil(mat->rows / (double) subMatHeight) - 1;
+        this->paddingWidth = paddingWidth;
+        this->paddingHeight = paddingHeight;
+    }
+
+    cv::Mat SubImage::undoPadding() {
+        int x = this->paddingWidth;
+        int y = this->paddingHeight;
+        int width = this->mat.cols - 2 * this->paddingWidth;
+        int height = this->mat.rows - 2 * this->paddingHeight;
+
+        if (this->i == 0) {
+            x = 0;
+        }
+        if (this->i == 0 || this->i == this->maxI) {
+            width += this->paddingWidth;
+        }
+        if (this->maxI == 0) {
+            width += this->paddingWidth;
+        }
+        if (this->j == 0) {
+            y = 0;
+        }
+        if (this->j == 0 || this->j == this->maxJ) {
+            height += this->paddingHeight;
+        }
+        if (this->maxJ == 0) {
+            height += this->paddingHeight;
+        }
+
+        cv::Mat cropped = crop(&this->mat, x, y, width, height, 0, 0);
+        return cropped;
+
+    }
+
+    cv::Mat SubImage::crop(cv::Mat *mat, int x, int y, int width, int height, int paddingWidth, int paddingHeight) {
+        cv::Rect returnRect = cv::Rect(x - paddingWidth, y - paddingHeight, width + (paddingWidth * 2), height + (paddingHeight * 2));
+        if (returnRect.x < 0) {
+            returnRect.width -= -returnRect.x;
+            returnRect.x = 0;
+        }
+        if (returnRect.y < 0) {
+            returnRect.height -= -returnRect.y;
+            returnRect.y = 0;
+        }
+        if (returnRect.x + returnRect.width >= mat->cols)
+            returnRect.width = mat->cols - returnRect.x;
+        if (returnRect.y + returnRect.height >= mat->rows)
+            returnRect.height = mat->rows - returnRect.y;
+        cv::Mat croppedMat = (*mat)(returnRect);
+        return croppedMat;
+    }
+}

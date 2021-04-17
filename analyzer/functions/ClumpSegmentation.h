@@ -9,7 +9,7 @@ using namespace std;
 namespace segment {
     cv::Mat drlse_denoise(cv::Mat phi, cv::Mat g, float lambda, float mu, float alpha, float epsilon, float timestep);
 
-    cv::Mat runQuickshift(Image *image, int kernelsize, int maxdist, bool debug = false);
+    cv::Mat runQuickshift(cv::Mat *mat, int kernelsize, int maxdist, bool debug = false);
 
     /*
       runCanny runs canny edge detection on an image, and dilates and erodes it to close holes
@@ -34,9 +34,9 @@ namespace segment {
       vector<vector<cv::Point> > hulls = convex hulls to provide initial labeling
       int maxGmmIterations = maximum number of iterations to allow the gmm to train
     */
-    cv::Mat runGmm(cv::Mat mat, vector<vector<cv::Point>> hulls, int maxGmmIterations);
+    cv::Mat runGmm(cv::Mat *mat, vector<vector<cv::Point>> hulls, int maxGmmIterations);
 
-    cv::Mat runGmmCleanup(cv::Mat mat, cv::Mat gmmPredictions);
+    cv::Mat runGmmCleanup(cv::Mat *mat, cv::Mat gmmPredictions);
 
     /*
     findFinalClumpBoundaries takes an image and a threshold and returns all the contours whose

@@ -15,12 +15,12 @@ namespace segment {
         cv::Mat vy = getGradientY(gGradient);
         for (int i = 0; i < iter_in; i++) {
             vector <cv::Mat> gradient = calcGradient(phi);
-            vector <cv::Mat> curvatureXY = calcCurvatureXY(gradient);
+            vector <cv::Mat> curvatureXY = drlse::calcCurvatureXY(gradient);
             cv::Mat Nx = curvatureXY[0];
             cv::Mat Ny = curvatureXY[1];
             cv::Mat curvature = calcDivergence(Nx, Ny);
-            cv::Mat regularizer = calcSignedDistanceReg(phi);
-            cv::Mat dirac = calcDiracDelta(phi, epsilon);
+            cv::Mat regularizer = drlse::calcSignedDistanceReg(phi);
+            cv::Mat dirac = drlse::calcDiracDelta(phi, epsilon);
             cv::Mat areaTerm = dirac.mul(g);
             cv::Mat edgeTerm = dirac.mul(vx.mul(Nx) + vy.mul(Ny)) +
                                dirac.mul(g).mul(curvature);
@@ -40,14 +40,13 @@ namespace segment {
          int kernelsize = the kernel or window size of the quickshift applied
          int maxdist = the largest distance a pixel can be from it's root
        */
-    cv::Mat runQuickshift(Image *image, int kernelsize, int maxdist, bool debug) {
-        cv::Mat mat = image->mat;
-        int channels = mat.channels();
-        int width = mat.cols;
-        int height = mat.rows;
+    cv::Mat runQuickshift(cv::Mat *mat, int kernelsize, int maxdist, bool debug) {
+        int channels = mat->channels();
+        int width = mat->cols;
+        int height = mat->rows;
 
         cv::Mat tempMat;
-        mat.copyTo(tempMat);
+        mat->copyTo(tempMat);
         tempMat.convertTo(tempMat, CV_64FC3, 1 / 255.0);
         double *cvmat = (double *) tempMat.data;
         double *vlmat = (double *) calloc(channels * width * height, sizeof(double));
@@ -68,7 +67,7 @@ namespace segment {
         outmat.convertTo(outmat, CV_8UC3, 255);
         free(vlmat);
 
-        if (debug) image->log("Super pixels found via quickshift: %i\n", superpixelcount);
+        //if (debug) image->log("Super pixels found via quickshift: %i\n", superpixelcount);
         return outmat;
     }
 
@@ -116,9 +115,9 @@ namespace segment {
       vector<vector<cv::Point>> hulls = convex hulls to provide initial labeling
       int maxGmmIterations = maximum number of iterations to allow the gmm to train
     */
-    cv::Mat runGmm(cv::Mat mat, vector<vector<cv::Point>> hulls, int maxGmmIterations) {
+    cv::Mat runGmm(cv::Mat *mat, vector<vector<cv::Point>> hulls, int maxGmmIterations) {
         cv::Mat grayscaleMat;
-        mat.convertTo(grayscaleMat, CV_8UC3);
+        mat->convertTo(grayscaleMat, CV_8UC3);
         cv::cvtColor(grayscaleMat, grayscaleMat, CV_BGR2GRAY);
 
         cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(2);
@@ -129,9 +128,9 @@ namespace segment {
         grayscaleMat = grayscaleMat.reshape(0, grayscaleMat.rows * grayscaleMat.cols);
 
         //Foreground black, background white
-        cv::Mat probCluster1 = cv::Mat::ones(mat.rows, mat.cols, CV_32F);
+        cv::Mat probCluster1 = cv::Mat::ones(mat->rows, mat->cols, CV_32F);
         cv::drawContours(probCluster1, hulls, -1, (0), -1);
-        probCluster1 = probCluster1.reshape(0, mat.rows * mat.cols);
+        probCluster1 = probCluster1.reshape(0, mat->rows * mat->cols);
 
         //Foreground white, background black
         cv::Mat probCluster2;
@@ -150,7 +149,7 @@ namespace segment {
         cell_gmm->setClustersNumber(2);
         cell_gmm->trainM(grayscaleMat, initialProbMat, cv::noArray(), labels, cv::noArray());
 
-        labels = labels.reshape(0, mat.rows);
+        labels = labels.reshape(0, mat->rows);
 
         cv::Mat outmat;
         labels.copyTo(outmat);
@@ -161,12 +160,12 @@ namespace segment {
         return outmat;
     }
 
-    cv::Mat runGmmCleanup(cv::Mat mat, cv::Mat gmmPredictions) {
+    cv::Mat runGmmCleanup(cv::Mat *mat, cv::Mat gmmPredictions) {
         float timestep = 5;
         float mu = 0.04;
         float epsilon = 1.5;
 
-        cv::Mat edgeEnforcer = calcEdgeEnforcer(mat);
+        cv::Mat edgeEnforcer = drlse::calcEdgeEnforcer(*mat);
         cv::Mat initialPhi;
 
         gmmPredictions.convertTo(initialPhi, CV_32FC1, 1.0/255.0);

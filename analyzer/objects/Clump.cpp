@@ -162,7 +162,6 @@ namespace segment {
             double perimeter = cv::arcLength(*nucleus, true);
             double circularity = 4 * M_PI * area / pow(perimeter, 2.0);
             if (circularity >= minCircularity) {
-                cout << circularity << endl;
                 filteredNuclei.push_back(*nucleus);
             }
         }
@@ -204,7 +203,6 @@ namespace segment {
     vector<vector<cv::Point>> Clump::getFinalCellContours() {
         for (unsigned int cellIdx = 0; cellIdx < this->cells.size(); cellIdx++) {
             Cell *cell = &this->cells[cellIdx];
-
             cell->finalContour = this->undoBoundingRect(cell->getPhiContour());
             this->finalCellContours.push_back(cell->finalContour);
         }

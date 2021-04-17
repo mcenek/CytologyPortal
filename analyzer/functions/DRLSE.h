@@ -4,27 +4,24 @@
 #include "../objects/Clump.h"
 
 namespace segment {
+    namespace drlse {
+
+        void updatePhi(Cell *cellI, Clump *clump, double dt, double epsilon, double mu, double kappa, double chi);
+
+        cv::Mat calcAllBinaryEnergy(Cell *cellI, Clump *clump, cv::Mat dirac);
+
+        cv::Mat calcBinaryEnergy(cv::Mat mat, cv::Mat clumpPrior, cv::Mat edgeEnforcer, cv::Mat dirac);
+
         vector<cv::Mat> calcCurvatureXY(vector<cv::Mat> gradient);
-
-        cv::Mat calcDiracDelta(cv::Mat mat, double sigma);
-
-        //Returns a divergence of the given matrix
-        cv::Mat calcDivergence(cv::Mat x, cv::Mat y);
 
         cv::Mat calcEdgeEnforcer(cv::Mat mat);
 
         //A unary LSF energy term, following the equation - κδε(φi)div(hCg∇φi|∇φi|)
         cv::Mat calcGeodesicTerm(cv::Mat dirac, vector<cv::Mat> gradient, cv::Mat edgeEnforcer, cv::Mat clumpPrior);
 
-        std::vector<cv::Mat> calcGradient(cv::Mat image);
-
-        //Returns the magnitude for the given matricies
-        cv::Mat calcGradientMagnitude(cv::Mat img);
+        cv::Mat calcDiracDelta(cv::Mat mat, double sigma);
 
         cv::Mat calcHeaviside(cv::Mat mat);
-
-        //Returns the magnitude for the given matricies
-        cv::Mat calcMagnitude(cv::Mat x, cv::Mat y);
 
         //Applies the normalized derivative of the potential function ......
         cv::Mat calcPotential(cv::Mat gradientMagnitude);
@@ -41,15 +38,8 @@ namespace segment {
 
         vector<vector<cv::Point>> getContours(cv::Mat mat);
 
-
-        cv::Mat getGradientX(vector<cv::Mat> gradient);
-
-        cv::Mat getGradientY(vector<cv::Mat> gradient);
-
-        bool hasOverlap(cv::Mat mat1, cv::Mat mat2);
-
         cv::Mat neumannBoundCond(cv::Mat mat);
-
+    }
 }
 
 #endif //LSM_H

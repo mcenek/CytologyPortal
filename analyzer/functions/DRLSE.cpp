@@ -1,10 +1,53 @@
 #include "opencv2/opencv.hpp"
 #include "../objects/Clump.h"
+#include "../functions/SegmenterTools.h"
 #include "DRLSE.h"
 #include <ctime>
 using namespace std;
 
 namespace segment {
+    namespace drlse {
+
+        void updatePhi(Cell *cellI, Clump *clump, double dt, double epsilon, double mu, double kappa, double chi) {
+            vector <cv::Mat> gradient = calcGradient(cellI->phi);
+            cv::Mat regularizer = calcSignedDistanceReg(cellI->phi);
+            cv::Mat dirac = calcDiracDelta(cellI->phi, epsilon);
+            cv::Mat gac = calcGeodesicTerm(dirac, gradient, clump->edgeEnforcer, clump->clumpPrior);
+            cv::Mat binaryEnergy = calcAllBinaryEnergy(cellI, clump, dirac);
+
+            cellI->phi += dt * (
+                    mu * regularizer +
+                    kappa * gac +
+                    chi * binaryEnergy
+            );
+        }
+
+        cv::Mat calcAllBinaryEnergy(Cell *cellI, Clump *clump, cv::Mat dirac) {
+            cv::Mat binaryEnergy = cv::Mat::zeros(cellI->phi.rows, cellI->phi.cols, CV_32FC1);
+            for (unsigned int cellIdxJ = 0; cellIdxJ < clump->cells.size(); cellIdxJ++) {
+                Cell *cellJ = &clump->cells[cellIdxJ];
+
+                if (cellI == cellJ) {
+                    continue;
+                }
+
+                if (hasOverlap(cellI->phi, cellJ->phi)) {
+                    binaryEnergy += calcBinaryEnergy(cellJ->phi, clump->clumpPrior, clump->edgeEnforcer, dirac);
+
+                }
+            }
+            return binaryEnergy;
+        }
+
+        cv::Mat calcBinaryEnergy(cv::Mat mat, cv::Mat clumpPrior, cv::Mat edgeEnforcer, cv::Mat dirac) {
+            cv::Mat overAreaTerm;
+            cv::Mat heaviside = calcHeaviside(mat);
+            overAreaTerm = clumpPrior.mul(edgeEnforcer);
+            overAreaTerm = overAreaTerm.mul(dirac);
+            overAreaTerm = overAreaTerm.mul(heaviside);
+            return overAreaTerm;
+        }
+
         vector <cv::Mat> calcCurvatureXY(vector <cv::Mat> gradient) {
             double smallNumber = 1e-10;
             cv::Mat gradientX = getGradientX(gradient);
@@ -37,14 +80,7 @@ namespace segment {
             return f;
         }
 
-        //Returns a divergence of the given matrix
-        cv::Mat calcDivergence(cv::Mat x, cv::Mat y) {
-            vector <cv::Mat> gradientX = calcGradient(x);
-            vector <cv::Mat> gradientY = calcGradient(y);
-            cv::Mat gradientXX = getGradientX(gradientX);
-            cv::Mat gradientYY = getGradientY(gradientY);
-            return gradientXX + gradientYY;
-        }
+
 
         cv::Mat calcEdgeEnforcer(cv::Mat mat) {
             mat = mat.clone();
@@ -86,48 +122,6 @@ namespace segment {
             return dirac.mul(vxd.mul(Nx) + vyd.mul(Ny)) + dirac.mul(clumpPrior).mul(edgeEnforcer).mul(curvature);
         }
 
-        vector <cv::Mat> calcGradient(cv::Mat image) {
-            int rows = image.rows;
-            int cols = image.cols;
-
-            cv::Mat gradientX = cv::Mat(rows, cols, CV_32FC1);
-            cv::Mat gradientY = cv::Mat(rows, cols, CV_32FC1);
-
-            float dx = 0.0;
-            float dy = 0.0;
-
-            for (int i = 0; i < rows; i++) {
-                for (int j = 0; j < cols; j++) {
-                    if (j == 0) {
-                        dx = image.at<float>(i, j + 1) - image.at<float>(i, j);
-                    } else if (j == cols - 1) {
-                        dx = image.at<float>(i, j) - image.at<float>(i, j - 1);
-                    } else {
-                        dx = 0.5 * (image.at<float>(i, j + 1) - image.at<float>(i, j - 1));
-                    }
-
-                    if (i == 0) {
-                        dy = image.at<float>(i + 1, j) - image.at<float>(i, j);
-                    } else if (i == rows - 1) {
-                        dy = image.at<float>(i, j) - image.at<float>(i - 1, j);
-                    } else {
-                        dy = 0.5 * (image.at<float>(i + 1, j) - image.at<float>(i - 1, j));
-                    }
-
-                    gradientX.at<float>(i, j) = dx;
-                    gradientY.at<float>(i, j) = dy;
-                }
-            }
-
-            return {gradientX, gradientY};
-        }
-
-        //Returns the magnitude for the given matricies
-        cv::Mat calcGradientMagnitude(cv::Mat img) {
-            vector <cv::Mat> gradient = calcGradient(img);
-            return calcMagnitude(getGradientX(gradient), getGradientY(gradient));
-        }
-
         cv::Mat calcHeaviside(cv::Mat mat) {
             cv::Mat heaviside = mat.clone();
             for (int i = 0; i < heaviside.rows; i++) {
@@ -139,13 +133,6 @@ namespace segment {
                 }
             }
             return heaviside;
-        }
-
-        //Returns the magnitude for the given matricies
-        cv::Mat calcMagnitude(cv::Mat x, cv::Mat y) {
-            cv::Mat magnitude;
-            cv::magnitude(x, y, magnitude);
-            return magnitude;
         }
 
         //Applies the normalized derivative of the potential function ......
@@ -366,22 +353,7 @@ namespace segment {
             return contours;
         }
 
-        cv::Mat getGradientX(vector <cv::Mat> gradient) {
-            return gradient[0];
-        }
 
-        cv::Mat getGradientY(vector <cv::Mat> gradient) {
-            return gradient[1];
-        }
-
-        bool hasOverlap(cv::Mat mat1, cv::Mat mat2) {
-            cv::Mat thresholdMat1, thresholdMat2;
-            cv::threshold(mat1, thresholdMat1, 0, 1, CV_THRESH_BINARY_INV);
-            cv::threshold(mat2, thresholdMat2, 0, 1, CV_THRESH_BINARY_INV);
-            cv::Mat overlapMask;
-            cv::bitwise_and(thresholdMat1, thresholdMat2, overlapMask);
-            return cv::countNonZero(overlapMask) > 0;
-        }
 
         cv::Mat neumannBoundCond(cv::Mat mat) {
             int rows = mat.rows;
@@ -409,4 +381,5 @@ namespace segment {
 
             return nbc;
         }
+    }
 }

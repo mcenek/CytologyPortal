@@ -94,9 +94,9 @@ namespace segment {
         vector<Clump> *clumps = &image->clumps;
         for (unsigned int i = 0; i < clumps->size(); i++) {
             Clump *clump = &(*clumps)[i];
-            clump->extract();
+            cv::Mat clumpMat = clump->extract();
 
-            vector<vector<cv::Point>> nuclei = runMser(&clump->mat, clump->computeOffsetContour(),
+            vector<vector<cv::Point>> nuclei = runMser(&clumpMat, clump->computeOffsetContour(),
                                                  delta, minArea, maxArea, maxVariation,
                                                  minDiversity, debug);
             clump->nucleiBoundaries = nuclei;

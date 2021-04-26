@@ -47,20 +47,20 @@ namespace segment {
     void associateClumpBoundariesWithCell(Clump *clump, int c, bool debug) {
         if (clump->cells.size() == 1) {
             Cell *cell = &clump->cells[0];
-            cell->cytoMask = cv::Mat::zeros(clump->mat.rows, clump->mat.cols, CV_8U);
+            cell->cytoMask = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
             cv::drawContours(cell->cytoMask, vector<vector<cv::Point>>{clump->offsetContour}, -1, 255, CV_FILLED);
             return;
         }
 
-        for (int row = 0; row < clump->mat.rows; row++) {
-            for (int col = 0; col < clump->mat.cols; col++) {
+        for (int row = 0; row < clump->boundingRect.height; row++) {
+            for (int col = 0; col < clump->boundingRect.width; col++) {
                 cv::Point point = cv::Point(col, row);
                 if (cv::pointPolygonTest(clump->offsetContour, point, false) >= 0) {
                     Cell *associatedCell = findAssociatedCell(point, clump);
                     if (associatedCell == nullptr) continue;
 
                     if (associatedCell->cytoMask.empty()) {
-                        associatedCell->cytoMask = cv::Mat::zeros(clump->mat.rows, clump->mat.cols, CV_8U);
+                        associatedCell->cytoMask = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
                     }
                     associatedCell->cytoMask.at<unsigned char>(row, col) = 255;
                 }
@@ -87,11 +87,11 @@ namespace segment {
             if (cell->cytoMask.empty()) {
                 float distanceToNearestNucleus = findDistanceToNearestNucleus(clump, cell);
 
-                cv::Mat clumpMask = cv::Mat::zeros(clump->mat.rows, clump->mat.cols, CV_8U);
+                cv::Mat clumpMask = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
 
                 cv::drawContours(clumpMask, vector<vector<cv::Point>>{clump->offsetContour}, -1, 255, CV_FILLED);
 
-                cv::Mat contourMask = cv::Mat::zeros(clump->mat.rows, clump->mat.cols, CV_8U);
+                cv::Mat contourMask = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
                 cv::circle(contourMask, cell->nucleusCenter, distanceToNearestNucleus, 255, CV_FILLED);
 
                 cv::bitwise_and(clumpMask, contourMask, contourMask);
@@ -215,8 +215,8 @@ namespace segment {
 
                 cv::Mat sharedEdge;
 
-                cv::Mat cytoBoundaryMask = cv::Mat::zeros(clump->mat.rows, clump->mat.cols, CV_8U);
-                cv::Mat comparatorCytoBoundaryMask = cv::Mat::zeros(clump->mat.rows, clump->mat.cols, CV_8U);
+                cv::Mat cytoBoundaryMask = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
+                cv::Mat comparatorCytoBoundaryMask = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
 
                 vector<cv::Point> cytoContour = clump->cells[cellIdx].cytoBoundary;
                 cv::drawContours(cytoBoundaryMask, vector<vector<cv::Point>>{cytoContour}, 0, 255, 2);

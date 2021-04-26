@@ -92,7 +92,7 @@ namespace segment {
 
     // Mask the clump from the original image, then return a mat cropped to show
     // only this clump
-    void Clump::extract(bool showBoundary)
+    cv::Mat Clump::extract(bool showBoundary)
     {
         cv::Mat img = this->extractFull(showBoundary);
 
@@ -104,7 +104,8 @@ namespace segment {
             cv::drawContours(clump, vector<vector<cv::Point> >(1, this->contour), 0, cv::Scalar(1.0, 0.0, 1.0));
 
 
-        this->mat = clump;
+        //this->mat = clump;
+        return clump;
     }
 
     // If nucleiBoundaries are defined, compute the center of each nuclei
@@ -148,7 +149,7 @@ namespace segment {
     void Clump::convertNucleiBoundariesToContours() {
         if(this->nucleiBoundaries.empty())
             cerr << "nucleiBoundaries must be defined and present before Clump::convertNucleiBoundariesToContours can be run." << "\n";
-        cv::Mat regionMask = cv::Mat::zeros(this->mat.rows, this->mat.cols, CV_8U);
+        cv::Mat regionMask = cv::Mat::zeros(this->boundingRect.height, this->boundingRect.width, CV_8U);
         cv::drawContours(regionMask, this->nucleiBoundaries, -1, cv::Scalar(1.0));
         cv::findContours(regionMask, this->nucleiBoundaries, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
     }
@@ -172,7 +173,7 @@ namespace segment {
         for (unsigned int cellIdx = 0; cellIdx < this->cells.size(); cellIdx++) {
             Cell *cell = &this->cells[cellIdx];
 
-            cv::Mat nucleusMask = cv::Mat::zeros(this->mat.rows, this->mat.cols, CV_8U);
+            cv::Mat nucleusMask = cv::Mat::zeros(this->boundingRect.height, this->boundingRect.width, CV_8U);
             cv::drawContours(nucleusMask, this->nucleiBoundaries, cellIdx, cv::Scalar(255), CV_FILLED);
 
             cell->nucleusMask = nucleusMask;

@@ -10,8 +10,10 @@ namespace segment {
         int tempindex = 0;
         unsigned int numchecked = 0;
         unsigned int originalsize = clumps->size();
+
         while (clumps->size() > 0 && numchecked < originalsize) {
-            if ((*clumps)[tempindex].nucleiBoundaries.empty()) {
+            Clump *clump = &(*clumps)[tempindex];
+            if (clump->nucleiBoundaries.empty()) {
                 clumps->erase(clumps->begin() + tempindex);
                 tempindex--;
             }
@@ -32,7 +34,7 @@ namespace segment {
       double maxVariation = the max amount of variation allowed in regions
       double minDiversity = the min diversity allowed in regions
     */
-    vector<vector<cv::Point>> runMser(cv::Mat img, vector<cv::Point> contour, int delta,
+    vector<vector<cv::Point>> runMser(cv::Mat *img, vector<cv::Point> contour, int delta,
                                       int minArea, int maxArea, double maxVariation,
                                       double minDiversity, bool debug) {
         //Create a MSER instance
@@ -41,7 +43,7 @@ namespace segment {
 
         //Convert the src image to grayscale
         cv::Mat tmp;
-        img.convertTo(tmp, CV_8U);
+        img->convertTo(tmp, CV_8U);
         cv::cvtColor(tmp, tmp, CV_BGR2GRAY); //TODO - Read the image in as gray, remove this step
 
         //Return variables
@@ -87,45 +89,26 @@ namespace segment {
         return regions;
     }
 
-    cv::Mat runNucleiDetection(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity, double minCircularity, bool debug) {
-        cv::Mat mat = image->mat;
-
-        vector<Clump> *clumps = &image->clumps;
-        for (unsigned int i = 0; i < clumps->size(); i++) {
-            cv::Mat clump = (*clumps)[i].extract();
-
-            cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(1);
-            cv::cvtColor(clump, clump, CV_RGB2GRAY);
-            //clahe->apply(clump, clump);
-            cv::cvtColor(clump, clump, CV_GRAY2RGB);
-
-            vector<vector<cv::Point>> nuclei = runMser(clump, (*clumps)[i].computeOffsetContour(),
-                                                 delta, minArea, maxArea, maxVariation,
-                                                 minDiversity, debug);
-            (*clumps)[i].nucleiBoundaries = nuclei;
-            image->log("Clump %u, nuclei boundaries found: %lu\n", i, (*clumps)[i].nucleiBoundaries.size());
-        }
-
-        // write all the found clumps with nuclei
-        cv::Mat nucleiImg = postNucleiDetection(image, minCircularity);
-        mat.convertTo(nucleiImg, CV_64FC3);
-        return nucleiImg;
-    }
-
-    cv::Mat postNucleiDetection(Image *image, double minCircularity) {
-        cv::Mat nucleiImg = image->mat;
+    void runNucleiDetection(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity,
+                            double minCircularity, bool debug) {
         vector<Clump> *clumps = &image->clumps;
         for (unsigned int i = 0; i < clumps->size(); i++) {
             Clump *clump = &(*clumps)[i];
+            clump->extract();
+
+            vector<vector<cv::Point>> nuclei = runMser(&clump->mat, clump->computeOffsetContour(),
+                                                 delta, minArea, maxArea, maxVariation,
+                                                 minDiversity, debug);
+            clump->nucleiBoundaries = nuclei;
             if (clump->nucleiBoundaries.size() > 0) {
-                cv::Mat clumpImg = clump->extract();
                 clump->convertNucleiBoundariesToContours();
                 clump->filterNuclei(minCircularity);
-                cv::drawContours(nucleiImg, (*clumps)[i].undoOffsetContour(), -1, 0, 2);
             }
-
+            image->log("Clump %u, nuclei found: %lu\n", i, clump->nucleiBoundaries.size());
         }
         removeClumpsWithoutNuclei(clumps);
-        return nucleiImg;
+
     }
+
+
 }

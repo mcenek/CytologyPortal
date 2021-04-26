@@ -21,12 +21,11 @@ namespace segment {
       double maxVariation = the max amount of variation allowed in regions
       double minDiversity = the min diversity allowed in regions
     */
-    vector<vector<cv::Point>> runMser(cv::Mat img, vector<cv::Point> contour, int delta,
+    vector<vector<cv::Point>> runMser(cv::Mat *img, vector<cv::Point> contour, int delta,
                                       int minArea, int maxArea, double maxVariation,
                                       double minDiversity, bool debug = false);
 
-    cv::Mat runNucleiDetection(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity, double minCircularity, bool debug);
-    cv::Mat postNucleiDetection(Image *image, double minCircularity);
+    void runNucleiDetection(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity, double minCircularity, bool debug);
 }
 
 

@@ -132,6 +132,8 @@ namespace segment {
             cv::Mat temp;
             cv::threshold(gmmPredictions, temp, 0, 256, CV_THRESH_BINARY);
             image.writeImage("gmmPredictions.png", temp);
+        } else {
+            image.log("Loaded from file");
         }
 
 
@@ -167,10 +169,10 @@ namespace segment {
         start = chrono::high_resolution_clock::now();
         if (debug) image.log("Beginning MSER nuclei detection...\n");
 
-        cv::Mat nucleiImg = runNucleiDetection(&image, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);
+        runNucleiDetection(&image, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);
 
         //Save a snapshot of nuclei across all clumps
-        image.writeImage("nuclei_boundaries.png", nucleiImg);
+        //image.writeImage("nuclei_boundaries.png", nucleiImg);
 
         end = std::chrono::duration_cast<std::chrono::microseconds>(
                 chrono::high_resolution_clock::now() - start).count() / 1000000.0;

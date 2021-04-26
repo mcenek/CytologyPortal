@@ -18,17 +18,9 @@ namespace segment {
     //TODO: Fix this to work in all cases
     vector<cv::Point> interpolateLine(cv::Point start, cv::Point middle, cv::Point stop);
 
+    void startInitialCellSegmentationThread(Image *image, Clump *clump, int clumpIdx, cv::RNG *rng, cv::Mat outimg, bool debug);
+
     cv::Mat runInitialCellSegmentation(Image *image, int threshold1, int threshold2, bool debug = false);
 }
 
 #endif //INITIALCELLSEGMENTATION_H
-
-
-/*
- *                             float angle = angleBetween(startPoint, endPoint);
-                            cv::Point midpoint = getMidpoint(startPoint, endPoint);
-                            double width = cv::norm(startPoint-midpoint);
-                            double height = 50;
-                            cv::RotatedRect rotatedRect = cv::RotatedRect(midpoint, cv::Size2f(width,height), angle);
-                            cv::ellipse(temp, rotatedRect, cv::Scalar(255), -1);
- */

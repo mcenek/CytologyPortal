@@ -11,7 +11,7 @@ namespace segment {
             cv::Mat totalVariation = calcTotalVariation(cellI->phi);
 
 
-            cv::Mat image = clump->clumpMat;
+            cv::Mat image = clump->extract();
             cv::cvtColor(image, image, CV_RGB2GRAY);
             image.convertTo(image, CV_32FC1, 1/255.0);
 

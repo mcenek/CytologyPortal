@@ -74,7 +74,7 @@ namespace segment {
     }
 
     vector<cv::Point> Cell::getPhiContour() {
-        cv::Rect cropRect(10, 10, this->clump->clumpMat.cols, this->clump->clumpMat.rows);
+        cv::Rect cropRect(10, 10, this->clump->mat.cols, this->clump->mat.rows);
         cv::Mat temp = this->phi(cropRect);
         cv::threshold(temp, temp, 0, 1, cv::THRESH_BINARY_INV);
         temp.convertTo(temp, CV_8UC1, 255);

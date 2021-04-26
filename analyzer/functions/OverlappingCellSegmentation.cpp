@@ -94,7 +94,7 @@ namespace segment {
 
         for (unsigned int clumpIdx = 0; clumpIdx < clumps->size(); clumpIdx++) {
             Clump *clump = &(*clumps)[clumpIdx];
-            clump->edgeEnforcer = drlse::calcEdgeEnforcer(padMatrix(clump->clumpMat, cv::Scalar(255, 255, 255)));
+            clump->edgeEnforcer = drlse::calcEdgeEnforcer(padMatrix(clump->mat, cv::Scalar(255, 255, 255)));
             clump->clumpPrior = padMatrix(clump->clumpPrior, cv::Scalar(255, 255, 255));
             for (unsigned int cellIdxI = 0; cellIdxI < clump->cells.size(); cellIdxI++) {
                 Cell *cellI = &clump->cells[cellIdxI];

@@ -5,6 +5,8 @@
 #include "DRLSE.h"
 #include "SegmenterTools.h"
 #include "boost/filesystem.hpp"
+#include <thread>
+#include <future>
 
 namespace segment {
     vector<pair<Cell*, double>> findNucleiDistances(cv::Point point, Clump *clump) {
@@ -45,20 +47,20 @@ namespace segment {
     void associateClumpBoundariesWithCell(Clump *clump, int c, bool debug) {
         if (clump->cells.size() == 1) {
             Cell *cell = &clump->cells[0];
-            cell->cytoMask = cv::Mat::zeros(clump->clumpMat.rows, clump->clumpMat.cols, CV_8U);
+            cell->cytoMask = cv::Mat::zeros(clump->mat.rows, clump->mat.cols, CV_8U);
             cv::drawContours(cell->cytoMask, vector<vector<cv::Point>>{clump->offsetContour}, -1, 255, CV_FILLED);
             return;
         }
 
-        for (int row = 0; row < clump->clumpMat.rows; row++) {
-            for (int col = 0; col < clump->clumpMat.cols; col++) {
+        for (int row = 0; row < clump->mat.rows; row++) {
+            for (int col = 0; col < clump->mat.cols; col++) {
                 cv::Point point = cv::Point(col, row);
                 if (cv::pointPolygonTest(clump->offsetContour, point, false) >= 0) {
                     Cell *associatedCell = findAssociatedCell(point, clump);
                     if (associatedCell == nullptr) continue;
 
                     if (associatedCell->cytoMask.empty()) {
-                        associatedCell->cytoMask = cv::Mat::zeros(clump->clumpMat.rows, clump->clumpMat.cols, CV_8U);
+                        associatedCell->cytoMask = cv::Mat::zeros(clump->mat.rows, clump->mat.cols, CV_8U);
                     }
                     associatedCell->cytoMask.at<unsigned char>(row, col) = 255;
                 }
@@ -85,11 +87,11 @@ namespace segment {
             if (cell->cytoMask.empty()) {
                 float distanceToNearestNucleus = findDistanceToNearestNucleus(clump, cell);
 
-                cv::Mat clumpMask = cv::Mat::zeros(clump->clumpMat.rows, clump->clumpMat.cols, CV_8U);
+                cv::Mat clumpMask = cv::Mat::zeros(clump->mat.rows, clump->mat.cols, CV_8U);
 
                 cv::drawContours(clumpMask, vector<vector<cv::Point>>{clump->offsetContour}, -1, 255, CV_FILLED);
 
-                cv::Mat contourMask = cv::Mat::zeros(clump->clumpMat.rows, clump->clumpMat.cols, CV_8U);
+                cv::Mat contourMask = cv::Mat::zeros(clump->mat.rows, clump->mat.cols, CV_8U);
                 cv::circle(contourMask, cell->nucleusCenter, distanceToNearestNucleus, 255, CV_FILLED);
 
                 cv::bitwise_and(clumpMask, contourMask, contourMask);
@@ -166,6 +168,138 @@ namespace segment {
         }
     }
 
+    void startInitialCellSegmentationThread(Image *image, Clump *clump, int clumpIdx, cv::RNG *rng, cv::Mat outimg, bool debug) {
+
+        for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
+            vector<cv::Point> contour;
+            string fileStem = "clump" + to_string(clumpIdx) + "cell" + to_string(cellIdx);
+            boost::filesystem::path loadPath = image->getWritePath(fileStem, ".txt");
+            std::ifstream inFile(loadPath.string());
+            if (!inFile.fail()) {
+                int x, y;
+                while (inFile >> x >> y) {
+                    contour.push_back(cv::Point(x, y));
+
+                }
+                clump->finalCellContours.push_back(contour);
+            }
+        }
+        if (clump->finalCellContours.size() != clump->cells.size()) {
+            clump->finalCellContours.clear();
+        } else {
+            image->log("Loaded final contours from clump %d\n", clumpIdx);
+            return;
+        }
+
+        image->log("Beginning initial cell segmentation for clump %d\n", clumpIdx);
+
+        associateClumpBoundariesWithCell(clump, clumpIdx, debug);
+        //generateOtherCellBoundaries(clump);
+
+        getContoursFromMask(clump);
+        calculateGeometricCenters(clump);
+
+
+
+        //Calculate extremal contour extensions for each cell
+        for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
+            Cell *cell = &clump->cells[cellIdx];
+
+
+            //TODO: If we keep this approach shared edges could be memoized
+            for (unsigned int compIdx = 0; compIdx < clump->cells.size(); compIdx++) {
+                if (cellIdx == compIdx) continue;
+
+                Cell *comparatorCell = &clump->cells[compIdx];
+
+
+                cv::Mat sharedEdge;
+
+                cv::Mat cytoBoundaryMask = cv::Mat::zeros(clump->mat.rows, clump->mat.cols, CV_8U);
+                cv::Mat comparatorCytoBoundaryMask = cv::Mat::zeros(clump->mat.rows, clump->mat.cols, CV_8U);
+
+                vector<cv::Point> cytoContour = clump->cells[cellIdx].cytoBoundary;
+                cv::drawContours(cytoBoundaryMask, vector<vector<cv::Point>>{cytoContour}, 0, 255, 2);
+
+                vector<cv::Point> comparatorCytoContour = clump->cells[compIdx].cytoBoundary;
+                cv::drawContours(comparatorCytoBoundaryMask, vector<vector<cv::Point>>{comparatorCytoContour}, 0, 255, 2);
+
+                cv::bitwise_and(cytoBoundaryMask, comparatorCytoBoundaryMask, sharedEdge);
+
+
+                if (cv::countNonZero(sharedEdge) > 0) {
+                    vector<vector<cv::Point>> sharedEdgeVector;
+                    cv::findContours(sharedEdge, sharedEdgeVector, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+
+                    //Sort line as contours are not implicitly ordered
+                    struct contoursCmpY {
+                        bool operator()(const cv::Point &a, const cv::Point &b) const {
+                            if (a.y == b.y)
+                                return a.x < b.x;
+                            return a.y < b.y;
+                        }
+                    } contoursCmpY_;
+
+                    std::sort(sharedEdgeVector[0].begin(), sharedEdgeVector[0].end(), contoursCmpY_);
+
+                    //Iterate over the edge to find a viable point to extrapolate contour
+                    //TODO: I anticipate some issues with oddly concave shapes.. We're either going to need to be very clever with this approach or refactor
+                    int start = -1, end = -1;
+                    cv::Point startPoint;
+                    cv::Point endPoint;
+                    unsigned int endRef = sharedEdgeVector[0].size();
+                    if (sharedEdgeVector[0].size() >= 2) {
+                        endRef -= 2;
+                    }
+
+                    for (unsigned int startRef = 0; startRef < endRef; startRef++, endRef--) {
+                        cv::Point startPt = sharedEdgeVector[0][startRef];
+                        cv::Point endPt = sharedEdgeVector[0][endRef];
+
+                        if (start == -1 &&
+                            testLineViability(startPt, clump, comparatorCell)) {
+                            start = startRef;
+                            startPoint = startPt;
+                        }
+
+                        if (end == -1 && testLineViability(endPt, clump, comparatorCell)) {
+                            end = endRef;
+                            endPoint = endPt;
+                        }
+                    }
+
+                    if (start != -1 && end != -1) {
+                        cv::Mat overlappingContour = cv::Mat::zeros(cell->cytoMask.rows,cell->cytoMask.cols, CV_8U);
+                        float angle = angleBetween(startPoint, endPoint);
+                        cv::Point midpoint = getMidpoint(startPoint, endPoint);
+                        double width = cv::norm(startPoint-endPoint);
+                        double height = width / 2;
+                        cv::RotatedRect rotatedRect = cv::RotatedRect(midpoint, cv::Size2f(width,height), angle);
+                        cv::ellipse(overlappingContour, rotatedRect, cv::Scalar(255), -1);
+                        cv::bitwise_and(overlappingContour, comparatorCell->cytoMask, overlappingContour);
+                        cell->cytoMask += overlappingContour;
+                    }
+                }
+            }
+
+        }
+
+        for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
+            Cell *cell = &clump->cells[cellIdx];
+            vector<vector<cv::Point>> contours;
+            cv::findContours(cell->cytoMask, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+            if (!contours.empty()) {
+                contours[0] = clump->undoBoundingRect(contours[0]);
+                cv::Scalar color = cv::Scalar(rng->uniform(0,255), rng->uniform(0, 255), rng->uniform(0, 255));
+                cv::drawContours(outimg, vector<vector<cv::Point>>{contours[0]}, 0, color, 3);
+            }
+        }
+
+        clump->calcClumpPrior();
+
+    }
+
+
     cv::Mat runInitialCellSegmentation(Image *image, int threshold1, int threshold2, bool debug) {
         vector<Clump> *clumps = &image->clumps;
         // run a find contour on the nucleiBoundaries to get them as contours, not regions
@@ -181,136 +315,32 @@ namespace segment {
         cv::Mat outimg = image->mat.clone();
         cv::RNG rng(12345);
 
-        for (unsigned int clumpIdx = 0; clumpIdx < clumps->size(); clumpIdx++) {
-            Clump *clump = &(*clumps)[clumpIdx];
 
-            for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
-                vector<cv::Point> contour;
-                string fileStem = "clump" + to_string(clumpIdx) + "cell" + to_string(cellIdx);
-                boost::filesystem::path loadPath = image->getWritePath(fileStem, ".txt");
-                std::ifstream inFile(loadPath.string());
-                if (!inFile.fail()) {
-                    int x, y;
-                    while (inFile >> x >> y) {
-                        contour.push_back(cv::Point(x, y));
-
-                    }
-                    clump->finalCellContours.push_back(contour);
-                }
-            }
-            if (clump->finalCellContours.size() != clump->cells.size()) {
-                clump->finalCellContours.clear();
-            } else {
-                cout << "Loaded contours from clump " << clumpIdx << endl;
-                continue;
+        vector<shared_future<void>> allThreads;
+        vector<Clump>::iterator clumpIterator = clumps->begin();
+        int numThreads = 16;
+        do {
+            // Fill thread queue
+            while (allThreads.size() < numThreads && clumpIterator < clumps->end()) {
+                Clump *clump = &(*clumpIterator);
+                int clumpIdx = clumpIterator - clumps->begin();
+                clumpIterator++;
+                shared_future<void> thread_object = async(&startInitialCellSegmentationThread, image, clump, clumpIdx, &rng, outimg, debug);
+                allThreads.push_back(thread_object);
             }
 
-            associateClumpBoundariesWithCell(clump, clumpIdx, debug);
-            //generateOtherCellBoundaries(clump);
-
-            getContoursFromMask(clump);
-            calculateGeometricCenters(clump);
-
-
-
-            //Calculate extremal contour extensions for each cell
-            for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
-                Cell *cell = &clump->cells[cellIdx];
-
-
-                //TODO: If we keep this approach shared edges could be memoized
-                for (unsigned int compIdx = 0; compIdx < clump->cells.size(); compIdx++) {
-                    if (cellIdx == compIdx) continue;
-
-                    Cell *comparatorCell = &clump->cells[compIdx];
-
-
-                    cv::Mat sharedEdge;
-
-                    cv::Mat cytoBoundaryMask = cv::Mat::zeros(clump->clumpMat.rows, clump->clumpMat.cols, CV_8U);
-                    cv::Mat comparatorCytoBoundaryMask = cv::Mat::zeros(clump->clumpMat.rows, clump->clumpMat.cols, CV_8U);
-
-                    vector<cv::Point> cytoContour = clump->cells[cellIdx].cytoBoundary;
-                    cv::drawContours(cytoBoundaryMask, vector<vector<cv::Point>>{cytoContour}, 0, 255, 2);
-
-                    vector<cv::Point> comparatorCytoContour = clump->cells[compIdx].cytoBoundary;
-                    cv::drawContours(comparatorCytoBoundaryMask, vector<vector<cv::Point>>{comparatorCytoContour}, 0, 255, 2);
-
-                    cv::bitwise_and(cytoBoundaryMask, comparatorCytoBoundaryMask, sharedEdge);
-
-
-                    if (cv::countNonZero(sharedEdge) > 0) {
-                        vector<vector<cv::Point>> sharedEdgeVector;
-                        cv::findContours(sharedEdge, sharedEdgeVector, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-
-                        //Sort line as contours are not implicitly ordered
-                        struct contoursCmpY {
-                            bool operator()(const cv::Point &a, const cv::Point &b) const {
-                                if (a.y == b.y)
-                                    return a.x < b.x;
-                                return a.y < b.y;
-                            }
-                        } contoursCmpY_;
-
-                        std::sort(sharedEdgeVector[0].begin(), sharedEdgeVector[0].end(), contoursCmpY_);
-
-                        //Iterate over the edge to find a viable point to extrapolate contour
-                        //TODO: I anticipate some issues with oddly concave shapes.. We're either going to need to be very clever with this approach or refactor
-                        int start = -1, end = -1;
-                        cv::Point startPoint;
-                        cv::Point endPoint;
-                        unsigned int endRef = sharedEdgeVector[0].size();
-                        if (sharedEdgeVector[0].size() >= 2) {
-                            endRef -= 2;
-                        }
-
-                        for (unsigned int startRef = 0; startRef < endRef; startRef++, endRef--) {
-                            cv::Point startPt = sharedEdgeVector[0][startRef];
-                            cv::Point endPt = sharedEdgeVector[0][endRef];
-
-                            if (start == -1 &&
-                                testLineViability(startPt, clump, comparatorCell)) {
-                                start = startRef;
-                                startPoint = startPt;
-                            }
-
-                            if (end == -1 && testLineViability(endPt, clump, comparatorCell)) {
-                                end = endRef;
-                                endPoint = endPt;
-                            }
-                        }
-
-                        if (start != -1 && end != -1) {
-                            cv::Mat overlappingContour = cv::Mat::zeros(cell->cytoMask.rows,cell->cytoMask.cols, CV_8U);
-                            float angle = angleBetween(startPoint, endPoint);
-                            cv::Point midpoint = getMidpoint(startPoint, endPoint);
-                            double width = cv::norm(startPoint-endPoint);
-                            double height = width / 2;
-                            cv::RotatedRect rotatedRect = cv::RotatedRect(midpoint, cv::Size2f(width,height), angle);
-                            cv::ellipse(overlappingContour, rotatedRect, cv::Scalar(255), -1);
-                            cv::bitwise_and(overlappingContour, comparatorCell->cytoMask, overlappingContour);
-                            cell->cytoMask += overlappingContour;
-                        }
-                    }
-                }
-
-
-            }
-
-
-            for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
-                Cell *cell = &clump->cells[cellIdx];
-                vector<vector<cv::Point>> contours;
-                cv::findContours(cell->cytoMask, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-                if (!contours.empty()) {
-                    contours[0] = clump->undoBoundingRect(contours[0]);
-                    cv::Scalar color = cv::Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
-                    cv::drawContours(outimg, vector<vector<cv::Point>>{contours[0]}, 0, color, 3);
+            // Wait for a thread to finish
+            auto timeout = std::chrono::milliseconds(10);
+            for (int i = 0; i < allThreads.size(); i++) {
+                shared_future<void> thread = allThreads[i];
+                if (thread.valid() && thread.wait_for(timeout) == future_status::ready) {
+                    thread.get();
+                    allThreads.erase(allThreads.begin() + i);
+                    break;
                 }
             }
 
-            clump->calcClumpPrior();
-        }
+        } while(allThreads.size() > 0 || clumpIterator < clumps->end());
 
         return outimg;
     }

@@ -81,7 +81,7 @@ namespace segment {
     cv::Mat runPreprocessing(Image *image, int kernelsize, int maxdist, int threshold1, int threshold2, int maxGmmIterations) {
         const int subMatNumX = 1;
         const int subMatNumY = 1;
-        const int numThreads = 16;
+        const int numThreads = 4;
 
         cv::Mat *mat = &image->mat;
         vector<SubImage> subImages = splitMat(mat, subMatNumX, subMatNumY);

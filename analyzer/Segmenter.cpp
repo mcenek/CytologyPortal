@@ -1,14 +1,6 @@
 #include <iostream>
-#include <ctime>
-#include <stdio.h>
 #include <chrono>
 #include "Segmenter.h"
-#include "opencv2/opencv.hpp"
-#include "opencv2/features2d/features2d.hpp"
-#include "objects/Clump.h"
-#include "objects/Cell.h"
-#include "objects/Image.h"
-#include "functions/DRLSE.h"
 #include "functions/EvaluateSegmentation.h"
 #include "functions/SegmenterTools.h"
 #include "functions/ClumpSegmentation.h"

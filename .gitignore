@@ -9,4 +9,5 @@ obj/
 [Bb]in
 [Dd]ebug*/
 [Rr]elease*/
-/images/*
+images
+.idea

@@ -1,7 +1,6 @@
 #include <iostream>
 #include <ctime>
 #include <stdio.h>
-#include <filesystem>
 #include <chrono>
 #include "Segmenter.h"
 #include "opencv2/opencv.hpp"
@@ -129,11 +128,9 @@ namespace segment {
             gmmPredictions = runPreprocessing(&image, kernelsize, maxdist, threshold1, threshold2, maxGmmIterations);
             image.writeMatrix("gmmPredictions.yml", gmmPredictions);
 
-            cv::Mat temp;
-            cv::threshold(gmmPredictions, temp, 0, 256, CV_THRESH_BINARY);
-            image.writeImage("gmmPredictions.png", temp);
-        } else {
-            image.log("Loaded from file");
+            cv::threshold(gmmPredictions, outimg, 0, 256, CV_THRESH_BINARY);
+            image.writeImage("gmmPredictions.png", outimg);
+            outimg.release();
         }
 
 
@@ -146,13 +143,13 @@ namespace segment {
 
         vector <vector<cv::Point>> clumpBoundaries = findFinalClumpBoundaries(gmmPredictions, minAreaThreshold);
 
-
         outimg = drawColoredContours(image.mat, &clumpBoundaries);
         image.writeImage("clump_boundaries.png", outimg);
         if (debug) {
             //cv::imshow("Clump Segmentation", outimg);
             //cv::waitKey(0);
         }
+        outimg.release();
 
         // extract each clump from the original image
         image.createClumps(clumpBoundaries);
@@ -170,9 +167,9 @@ namespace segment {
         if (debug) image.log("Beginning MSER nuclei detection...\n");
 
         runNucleiDetection(&image, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);
-
-        //Save a snapshot of nuclei across all clumps
-        //image.writeImage("nuclei_boundaries.png", nucleiImg);
+        outimg = image.getNucleiBoundaries();
+        image.writeImage("nucleiBoundaries.png", outimg);
+        outimg.release();
 
         end = std::chrono::duration_cast<std::chrono::microseconds>(
                 chrono::high_resolution_clock::now() - start).count() / 1000000.0;
@@ -181,17 +178,19 @@ namespace segment {
         start = chrono::high_resolution_clock::now();
         if (debug) image.log("Beginning initial cell segmentation...\n");
 
-        cv::Mat initialCells = runInitialCellSegmentation(&image, threshold1, threshold2, debug);
-        image.writeImage("initial_cell_boundaries.png", initialCells);
+        outimg = runInitialCellSegmentation(&image, threshold1, threshold2, debug);
+        image.writeImage("initial_cell_boundaries.png", outimg);
         if (debug) {
-            //cv::imshow("Initial Cell Segmentation", initialCells);
+            //cv::imshow("Initial Cell Segmentation", outimg);
             //cv::waitKey(0);
         }
+        outimg.release();
 
         end = std::chrono::duration_cast<std::chrono::microseconds>(
                 chrono::high_resolution_clock::now() - start).count() / 1000000.0;
         if (debug) image.log("Finished initial cell segmentation, time: %f\n", end);
 
+        /*
         // print the nuclei sizes
         fstream nucleiSizes("nucleiSizes.txt");
         for (unsigned int c = 0; c < image.clumps.size(); c++) {
@@ -201,6 +200,7 @@ namespace segment {
             }
         }
         nucleiSizes.close();
+        */
 
 
         start = chrono::high_resolution_clock::now();
@@ -222,6 +222,7 @@ namespace segment {
 
         outimg = image.getFinalResult();
         image.writeImage("cell_boundaries.png", outimg);
+        outimg.release();
 
         start = chrono::high_resolution_clock::now();
         if (debug) image.log("Beginning segmentation evaluation...\n");

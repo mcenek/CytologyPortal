@@ -72,7 +72,13 @@ namespace segment {
         }
         vector<vector<cv::Point>> finalContours = clump->getFinalCellContours();
 
+        clump->edgeEnforcer.release();
+        clump->clumpPrior.release();
+
         for (unsigned int cellIdxI = 0; cellIdxI < clump->cells.size(); cellIdxI++) {
+            Cell *cell = &clump->cells[cellIdxI];
+            cell->phi.release();
+            cell->shapePrior.release();
             vector<cv::Point> finalContour = finalContours[cellIdxI];
             string fileStem = "clump" + to_string(clumpIdx) + "cell" + to_string(cellIdxI);
             boost::filesystem::path writePath = image->getWritePath(fileStem, ".txt");
@@ -80,7 +86,11 @@ namespace segment {
             for (cv::Point point : finalContour) {
                 outFile << point.x << " " << point.y << endl;
             }
+
         }
+
+
+
     }
 
     /*
@@ -105,7 +115,7 @@ namespace segment {
 
         vector<shared_future<void>> allThreads;
         vector<Clump>::iterator clumpIterator = clumps->begin();
-        int numThreads = 16;
+        int numThreads = 8;
         do {
             // Fill thread queue
             while (allThreads.size() < numThreads && clumpIterator < clumps->end()) {

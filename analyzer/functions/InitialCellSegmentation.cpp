@@ -318,7 +318,7 @@ namespace segment {
 
         vector<shared_future<void>> allThreads;
         vector<Clump>::iterator clumpIterator = clumps->begin();
-        int numThreads = 16;
+        int numThreads = 8;
         do {
             // Fill thread queue
             while (allThreads.size() < numThreads && clumpIterator < clumps->end()) {

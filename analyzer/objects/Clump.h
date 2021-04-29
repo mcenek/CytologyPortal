@@ -20,6 +20,7 @@ namespace segment {
         vector<cv::Point> offsetContour;
         cv::Rect boundingRect;
         vector<vector<cv::Point>> nucleiBoundaries;
+        bool nucleiBoundariesLoaded = false;
         vector<cv::Point> nucleiCenters;
         vector<vector<cv::Point>> cytoBoundaries;
         cv::Mat nucleiAssocs;
@@ -47,7 +48,7 @@ namespace segment {
         void createCells();
         void convertNucleiBoundariesToContours();
         void filterNuclei(double threshold = 0.5);
-        void generateNucleiMasks();
+        //void generateNucleiMasks();
         cv::Mat calcClumpPrior();
         vector<vector<cv::Point>> getFinalCellContours();
     };

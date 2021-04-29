@@ -3,16 +3,23 @@
 #include "../functions/Preprocessing.h"
 
 namespace segment {
-    SubImage::SubImage(cv::Mat *mat, int i, int j, int subMatWidth, int subMatHeight, int paddingWidth, int paddingHeight) {
-        int x = i * subMatWidth;
-        int y = j * subMatHeight;
-        this->mat = crop(mat, x, y, subMatWidth, subMatHeight, paddingWidth, paddingHeight);
+    SubImage::SubImage(cv::Mat *image, int i, int j, int subMatWidth, int subMatHeight, int paddingWidth, int paddingHeight) {
+        this->image = image;
+        this->x = i * subMatWidth;
+        this->y = j * subMatHeight;
+        this->subMatWidth = subMatWidth;
+        this->subMatHeight = subMatHeight;
         this->i = i;
         this->j = j;
-        this->maxI = ceil(mat->cols / (double) subMatWidth) - 1;
-        this->maxJ = ceil(mat->rows / (double) subMatHeight) - 1;
+        this->maxI = ceil(image->cols / (double) subMatWidth) - 1;
+        this->maxJ = ceil(image->rows / (double) subMatHeight) - 1;
         this->paddingWidth = paddingWidth;
         this->paddingHeight = paddingHeight;
+        this->mat = getMat();
+    }
+
+    cv::Mat SubImage::getMat() {
+        return crop(image, x, y, subMatWidth, subMatHeight, paddingWidth, paddingHeight);
     }
 
     cv::Mat SubImage::undoPadding() {

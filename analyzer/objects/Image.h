@@ -4,8 +4,10 @@
 #include "opencv2/opencv.hpp"
 #include "Clump.h"
 #include "boost/filesystem.hpp"
+#include "../thirdparty/nlohmann/json.hpp"
 
 using namespace std;
+using json = nlohmann::json;
 
 namespace segment {
     class Clump; //forward declaration
@@ -28,11 +30,13 @@ namespace segment {
         void writeImage(string name, cv::Mat mat);
         cv::Mat loadMatrix(string name);
         void writeMatrix(string name, cv::Mat mat);
+        json loadJSON(string name);
+        void writeJSON(string name, json &j);
         boost::filesystem::path getLogPath();
         void log(const char * format, ...);
         void clearLog();
         void createClumps(vector<vector<cv::Point>> clumpBoundaries);
-
+        cv::Mat getNucleiBoundaries();
         cv::Mat getFinalResult();
     };
 }

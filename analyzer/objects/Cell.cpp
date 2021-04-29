@@ -44,6 +44,7 @@ namespace segment {
         if (this->cytoMask.empty())
             cerr << "cytoMask must be defined and present before Cell::initializePhi() can be run." << "\n";
         this->cytoMask.convertTo(this->phi, CV_32FC1, 1.0/255);
+        this->cytoMask.release();
 
         for (int i = 0; i < this->phi.rows; i++) {
             float *row = this->phi.ptr<float>(i);

@@ -2,8 +2,10 @@
 #include "Clump.h"
 #include "../functions/SegmenterTools.h"
 #include "boost/filesystem.hpp"
+#include "../thirdparty/nlohmann/json.hpp"
 
 using namespace std;
+using json = nlohmann::json;
 
 namespace segment {
     Image::Image(string path) {
@@ -74,6 +76,25 @@ namespace segment {
         fs.release();
     }
 
+    json Image::loadJSON(string name) {
+        boost::filesystem::path writePath = getWritePath(name, ".json");
+        ifstream ifs(writePath.string());
+        json j;
+        try {
+            ifs >> j;
+        } catch(json::parse_error& ex) {
+
+        }
+        return j;
+    }
+
+
+    void Image::writeJSON(string name, json &j) {
+        boost::filesystem::path writePath = getWritePath(name, ".json");
+        ofstream ofs(writePath.string());
+        ofs << /*setw(4) <<*/ j << endl;
+    }
+
     boost::filesystem::path Image::getLogPath() {
         return getWritePath("log", ".txt");
     }
@@ -105,6 +126,7 @@ namespace segment {
             clump.image = this;
             clump.contour = vector<cv::Point>(clumpBoundaries[i]);
             clump.computeBoundingRect(this->matPadded);
+            clump.computeOffsetContour();
             clumps.push_back(clump);
 
             //TODO - Remove
@@ -113,6 +135,15 @@ namespace segment {
             // clump.extract().convertTo(outimg, CV_8UC3);
             // cv::imwrite(buffer, outimg);
         }
+    }
+
+    cv::Mat Image::getNucleiBoundaries() {
+        cv::Mat img = this->mat.clone();
+        for (int i = 0; i < this->clumps.size(); i++) {
+            Clump *clump = &this->clumps[i];
+            cv::drawContours(img, clump->undoOffsetContour(), -1, 0, 3);
+        }
+        return img;
     }
 
     cv::Mat Image::getFinalResult() {

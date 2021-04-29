@@ -17,9 +17,8 @@ namespace segment {
         cv::Point geometricCenter; //Currently unassigned
         vector<cv::Point> cytoBoundary;
         cv::Mat cytoMask;
-        cv::Mat nucleusMask; //Used to avoid re-computing the nucleiMasks
+        //cv::Mat nucleusMask; //Used to avoid re-computing the nucleiMasks
         vector <cv::Point> nucleusBoundary;
-        cv::Mat interpolatedContour;
         cv::Mat shapePrior;
         cv::Mat phi; //Used to store the evolving LSF front
         vector<cv::Point> finalContour;

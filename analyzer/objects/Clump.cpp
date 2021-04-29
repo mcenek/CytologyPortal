@@ -139,11 +139,11 @@ namespace segment {
             cell.clump = this;
             cell.nucleusBoundary = vector<cv::Point>(*boundary);
             cell.computeCenter();
-            cell.generateColor(); //TODO: Not strictly guarenteed to be unique.. Could lead to segmentation errors as currently implemented
+            //cell.generateColor(); //TODO: Not strictly guarenteed to be unique.. Could lead to segmentation errors as currently implemented
 
             this->cells.push_back(cell);
         }
-        this->generateNucleiMasks();
+        //this->generateNucleiMasks();
     }
 
     void Clump::convertNucleiBoundariesToContours() {
@@ -167,6 +167,8 @@ namespace segment {
         }
         this->nucleiBoundaries = filteredNuclei;
     }
+
+    /*
     void Clump::generateNucleiMasks() {
         if(this->nucleiBoundaries.empty())
             cerr << "nucleiBoundaries must be defined and present before Clump::generateNucleiMasks can be run." << "\n";
@@ -183,6 +185,7 @@ namespace segment {
             //cv::waitKey(0);
         }
     }
+     */
 
     cv::Mat Clump::calcClumpPrior() {
         for (unsigned int cellIdx = 0; cellIdx < this->cells.size(); cellIdx++) {

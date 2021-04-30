@@ -134,7 +134,7 @@ namespace segment {
             }
             cv::Scalar color = cv::Scalar(rng->uniform(0,255), rng->uniform(0, 255), rng->uniform(0, 255));
             vector<vector<cv::Point>> contour = {(*contours)[j]};
-            cv::drawContours(*img, contour, 0, color, 3);
+            cv::drawContours(*img, contour, 0, color, 1);
         }
         return img;
     }

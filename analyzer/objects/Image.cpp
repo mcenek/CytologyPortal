@@ -141,7 +141,7 @@ namespace segment {
         cv::Mat img = this->mat.clone();
         for (int i = 0; i < this->clumps.size(); i++) {
             Clump *clump = &this->clumps[i];
-            cv::drawContours(img, clump->undoOffsetContour(), -1, 0, 3);
+            cv::drawContours(img, clump->undoOffsetContour(), -1, 0, 1);
         }
         return img;
     }

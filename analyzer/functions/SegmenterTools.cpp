@@ -1,7 +1,5 @@
-#include "opencv2/opencv.hpp"
 #include "SegmenterTools.h"
-
-#include <math.h>
+#include <cmath>
 
 using namespace std;
 

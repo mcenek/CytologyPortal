@@ -1,8 +1,5 @@
 #include "Image.h"
-#include "Clump.h"
 #include "../functions/SegmenterTools.h"
-#include "boost/filesystem.hpp"
-#include "../thirdparty/nlohmann/json.hpp"
 
 using namespace std;
 using json = nlohmann::json;

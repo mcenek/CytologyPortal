@@ -1,10 +1,5 @@
 #include "InitialCellSegmentation.h"
-#include "ClumpSegmentation.h"
-#include "opencv2/opencv.hpp"
-#include "../objects/Clump.h"
-#include "DRLSE.h"
 #include "SegmenterTools.h"
-#include "boost/filesystem.hpp"
 #include <thread>
 #include <future>
 

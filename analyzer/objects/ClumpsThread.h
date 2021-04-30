@@ -16,8 +16,8 @@ namespace segment {
 
         ClumpsThread(int maxThreads,
                      vector<Clump> *clumps,
-                     function<void(Clump *, int)> threadFunction,
-                     function<void(Clump *, int)> threadDoneFunction);
+                     const function<void(Clump *, int)> &threadFunction,
+                     const function<void(Clump *, int)> &threadDoneFunction = {});
         void start();
     };
 

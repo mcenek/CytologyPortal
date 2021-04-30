@@ -1,11 +1,8 @@
-#include "opencv2/opencv.hpp"
 #include "EvaluateSegmentation.h"
+#include "opencv2/opencv.hpp"
 #include "../objects/Image.h"
-
 #include "boost/filesystem.hpp"
 #include "boost/foreach.hpp"
-
-
 
 using namespace std;
 

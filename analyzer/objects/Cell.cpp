@@ -1,5 +1,5 @@
-#include "opencv2/opencv.hpp"
 #include "Cell.h"
+#include "opencv2/opencv.hpp"
 
 double getRandomDouble(double x, double y) {
     double random = ((double) rand()) / (double) RAND_MAX;

@@ -1,6 +1,6 @@
+#include "Clump.h"
 #include <iterator>
 #include "opencv2/opencv.hpp"
-#include "Clump.h"
 
 using namespace std;
 

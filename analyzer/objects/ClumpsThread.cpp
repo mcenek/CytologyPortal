@@ -9,8 +9,8 @@ using namespace std;
 namespace segment {
     ClumpsThread::ClumpsThread(int maxThreads,
                                vector<Clump> *clumps,
-                               void (*threadFunction)(*Clump, int),
-                               void (*threadDoneFunction)(*Clump, int)) {
+                               function<void(Clump *, int)> threadFunction,
+                               function<void(Clump *, int)> threadDoneFunction) {
         this->maxThreads = maxThreads;
         this->clumps = clumps;
         this->threadFunction = threadFunction;

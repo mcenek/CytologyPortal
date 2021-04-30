@@ -11,13 +11,13 @@ namespace segment {
     public:
         int maxThreads;
         vector<Clump> *clumps;
-        void (*threadFunction)(*Clump, int);
-        void (*threadDoneFunction)(*Clump, int);
+        function<void(Clump *, int)> threadFunction;
+        function<void(Clump *, int)> threadDoneFunction;
 
         ClumpsThread(int maxThreads,
                      vector<Clump> *clumps,
-                     void (*threadFunction)(*Clump, int),
-                     void (*threadDoneFunction)(*Clump, int));
+                     function<void(Clump *, int)> threadFunction,
+                     function<void(Clump *, int)> threadDoneFunction);
         void start();
     };
 

@@ -8,12 +8,13 @@ using namespace std;
 
 namespace segment {
     class ClumpsThread {
-    public:
+    private:
         int maxThreads;
         vector<Clump> *clumps;
         function<void(Clump *, int)> threadFunction;
         function<void(Clump *, int)> threadDoneFunction;
 
+    public:
         ClumpsThread(int maxThreads,
                      vector<Clump> *clumps,
                      const function<void(Clump *, int)> &threadFunction,

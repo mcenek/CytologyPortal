@@ -174,7 +174,9 @@ namespace segment {
         };
 
         function<void(Clump *, int)> threadDoneFunction = [&finalCellBoundaries, &image](Clump *clump, int clumpIdx) {
-            saveFinalCellBoundaries(finalCellBoundaries, image, clump, clumpIdx);
+            if (!clump->finalCellContoursLoaded) {
+                saveFinalCellBoundaries(finalCellBoundaries, image, clump, clumpIdx);
+            }
         };
 
         int maxThreads = 8;

@@ -172,39 +172,11 @@ namespace segment {
     }
 
     void startInitialCellSegmentationThread(Image *image, Clump *clump, int clumpIdx, bool debug) {
-
-        /*
-        for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
-            vector<cv::Point> contour;
-            string fileStem = "clump" + to_string(clumpIdx) + "cell" + to_string(cellIdx);
-            boost::filesystem::path loadPath = image->getWritePath(fileStem, ".txt");
-            std::ifstream inFile(loadPath.string());
-            if (!inFile.fail()) {
-                int x, y;
-                while (inFile >> x >> y) {
-                    contour.push_back(cv::Point(x, y));
-
-                }
-                clump->finalCellContours.push_back(contour);
-            }
-        }
-        if (clump->finalCellContours.size() != clump->cells.size()) {
-            clump->finalCellContours.clear();
-        } else {
-            image->log("Loaded final contours from clump %d\n", clumpIdx);
-            return;
-        }
-         */
-
         image->log("Beginning initial cell segmentation for clump %d\n", clumpIdx);
 
         associateClumpBoundariesWithCell(clump, clumpIdx, debug);
-        //generateOtherCellBoundaries(clump);
-
         getContoursFromMask(clump);
         calculateGeometricCenters(clump);
-
-
 
         //Calculate extremal contour extensions for each cell
         for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
@@ -351,26 +323,25 @@ namespace segment {
 
         loadInitialCellBoundaries(initialCellBoundaries, image, clumps);
 
-        function<void(Clump *, int)> threadFunction = [&image, &debug](Clump *clump, int clumpIdx) {
+        function<void(Clump *, int)> threadFunction = [&image, &debug, &rng, &outimg](Clump *clump, int clumpIdx) {
             if (clump->initCytoBoundariesLoaded) {
                 image->log("Loaded clump %u initial cell boundaries from file\n", clumpIdx);
-                return;
+            } else {
+                startInitialCellSegmentationThread(image, clump, clumpIdx, debug);
             }
-            startInitialCellSegmentationThread(image, clump, clumpIdx, debug);
-        };
-
-        function<void(Clump *, int)> threadDoneFunction = [&initialCellBoundaries, &image, &rng, &outimg](Clump *clump, int clumpIdx) {
-            saveInitialCellBoundaries(initialCellBoundaries, image, clump, clumpIdx);
             for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
                 Cell *cell = &clump->cells[cellIdx];
                 vector<cv::Point> contour = clump->undoBoundingRect(cell->cytoBoundary);
                 cv::Scalar color = cv::Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
                 cv::drawContours(outimg, vector<vector<cv::Point>>{contour}, 0, color, 3);
             }
-
-            //TODO: save cp to file also
             clump->calcClumpPrior();
+        };
 
+        function<void(Clump *, int)> threadDoneFunction = [&initialCellBoundaries, &image](Clump *clump, int clumpIdx) {
+            if (!clump->initCytoBoundariesLoaded) {
+                saveInitialCellBoundaries(initialCellBoundaries, image, clump, clumpIdx);
+            }
         };
 
         int maxThreads = 8;

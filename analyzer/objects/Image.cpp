@@ -146,9 +146,10 @@ namespace segment {
     cv::Mat Image::getFinalResult() {
         cv::RNG rng(12345);
         cv::Mat img = this->mat.clone();
-        for (int i = 0; i < this->clumps.size(); i++) {
-            Clump *clump = &this->clumps[i];
-            drawColoredContours(&img, &clump->finalCellContours, &rng);
+        for (int clumpIdx = 0; clumpIdx < this->clumps.size(); clumpIdx++) {
+            Clump *clump = &this->clumps[clumpIdx];
+            vector<vector<cv::Point>> finalContours = clump->getFinalCellContours();
+            drawColoredContours(&img, &finalContours, &rng);
         }
         return img;
     }

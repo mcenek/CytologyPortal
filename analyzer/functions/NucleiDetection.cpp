@@ -131,14 +131,12 @@ namespace segment {
     void runNucleiDetection(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity,
                             double minCircularity, bool debug) {
         vector<Clump> *clumps = &image->clumps;
-        vector<shared_future<void>> allThreads;
-        vector<int> threadClumpId;
 
         json nucleiBoundaries;
 
         loadNucleiBoundaries(nucleiBoundaries, image, clumps);
 
-        function<void(Clump *, int)> threadFunction = [](Clump *clump, int i) {
+        function<void(Clump *, int)> threadFunction = [&image, &delta, &minArea, &maxArea, &maxVariation, &minDiversity, &minCircularity, &debug](Clump *clump, int i) {
             if (clump->nucleiBoundariesLoaded) {
                 image->log("Loaded clump %u nuclei from file\n", i);
                 return;
@@ -154,50 +152,16 @@ namespace segment {
             }
 
             image->log("Clump %u, nuclei found: %lu\n", i, clump->nucleiBoundaries.size());
-        }
+        };
 
-        function<void(Clump *, int)> threadDoneFunction = [](Clump *clump, int clumpIdx) {
+        function<void(Clump *, int)> threadDoneFunction = [&nucleiBoundaries, &image](Clump *clump, int clumpIdx) {
             if (!clump->nucleiBoundariesLoaded) {
                 saveNucleiBoundaries(nucleiBoundaries, image, clump, clumpIdx);
             }
-        }
+        };
 
         int maxThreads = 4;
-        ClumpsThread clumpsThread = ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
-
-        /*
-        vector<Clump>::iterator clumpIterator = clumps->begin();
-        int numThreads = 4;
-        do {
-            // Fill thread queue
-            while (allThreads.size() < numThreads && clumpIterator < clumps->end()) {
-                Clump *clump = &(*clumpIterator);
-                int clumpIdx = clumpIterator - clumps->begin();
-                clumpIterator++;
-                shared_future<void> thread_object = async(startNucleiDetectionThread, clump, clumpIdx, image, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);
-                allThreads.push_back(thread_object);
-                threadClumpId.push_back(clumpIdx);
-            }
-
-            // Wait for a thread to finish
-            auto timeout = std::chrono::milliseconds(10);
-            for (int i = 0; i < allThreads.size(); i++) {
-                shared_future<void> thread = allThreads[i];
-                int clumpIdx = threadClumpId[i];
-                Clump *clump = &(*clumps)[clumpIdx];
-                if (thread.valid() && thread.wait_for(timeout) == future_status::ready) {
-                    thread.get();
-                    if (!clump->nucleiBoundariesLoaded) {
-                        saveNucleiBoundaries(nucleiBoundaries, image, clump, clumpIdx);
-                    }
-                    allThreads.erase(allThreads.begin() + i);
-                    threadClumpId.erase(threadClumpId.begin() + i);
-                    break;
-                }
-            }
-
-        } while(allThreads.size() > 0 || clumpIterator < clumps->end());
-        */
+        ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 
         image->writeJSON("nucleiBoundaries", nucleiBoundaries);
 

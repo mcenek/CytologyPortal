@@ -1,5 +1,6 @@
 #include "InitialCellSegmentation.h"
 #include "SegmenterTools.h"
+#include "../objects/ClumpsThread.h"
 #include <thread>
 #include <future>
 
@@ -96,29 +97,36 @@ namespace segment {
         }
     }
 
+    void generateBoundaryFromMask(Cell *cell) {
+        vector<vector<cv::Point>> contours;
+        cv::findContours(cell->cytoMask, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        if (!contours.empty()) {
+            vector <cv::Point> maxContour;
+            int maxArea = 0;
+            for (vector <cv::Point> contour : contours) {
+                int area = cv::contourArea(contour);
+                if (area > maxArea) {
+                    maxArea = area;
+                    maxContour = contour;
+                }
+            }
+            cell->cytoBoundary = maxContour;
+        }
+    }
+
+    void generateMaskFromBoundary(Cell *cell) {
+        cell->cytoMask = cv::Mat::zeros(cell->clump->boundingRect.height, cell->clump->boundingRect.width, CV_8U);
+        cv::drawContours(cell->cytoMask, vector<vector<cv::Point>>{cell->cytoBoundary}, 0, 255, CV_FILLED);
+    }
+
     void getContoursFromMask(Clump *clump) {
         for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
             Cell *cell = &clump->cells[cellIdx];
-            vector<vector<cv::Point>> contours;
+            // Finds the biggest contour for the cell, if it finds multiple
+            generateBoundaryFromMask(cell);
 
-            cv::findContours(cell->cytoMask, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-            if (!contours.empty()) {
-                vector<cv::Point> maxContour;
-                int maxArea = 0;
-                for (vector<cv::Point> contour : contours) {
-                    int area = cv::contourArea(contour);
-                    if (area > maxArea) {
-                        maxArea = area;
-                        maxContour = contour;
-                    }
-                }
-                cell->cytoBoundary = maxContour;
-
-                cell->cytoMask = cv::Mat::zeros(cell->cytoMask.rows, cell->cytoMask.cols, CV_8U);
-
-                cv::drawContours(cell->cytoMask, vector<vector<cv::Point>>{maxContour}, 0, 255, CV_FILLED);
-
-            }
+            // Update the mask so that only the biggest contour is there
+            generateMaskFromBoundary(cell);
         }
     }
 
@@ -163,8 +171,9 @@ namespace segment {
         }
     }
 
-    void startInitialCellSegmentationThread(Image *image, Clump *clump, int clumpIdx, cv::RNG *rng, cv::Mat outimg, bool debug) {
+    void startInitialCellSegmentationThread(Image *image, Clump *clump, int clumpIdx, bool debug) {
 
+        /*
         for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
             vector<cv::Point> contour;
             string fileStem = "clump" + to_string(clumpIdx) + "cell" + to_string(cellIdx);
@@ -185,6 +194,7 @@ namespace segment {
             image->log("Loaded final contours from clump %d\n", clumpIdx);
             return;
         }
+         */
 
         image->log("Beginning initial cell segmentation for clump %d\n", clumpIdx);
 
@@ -276,24 +286,55 @@ namespace segment {
                     }
                 }
             }
-
+            // Update the cytoBoundary with the changes made to the cytoMask
+            generateBoundaryFromMask(cell);
         }
-
-        for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
-            Cell *cell = &clump->cells[cellIdx];
-            vector<vector<cv::Point>> contours;
-            cv::findContours(cell->cytoMask, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-            if (!contours.empty()) {
-                contours[0] = clump->undoBoundingRect(contours[0]);
-                cv::Scalar color = cv::Scalar(rng->uniform(0,255), rng->uniform(0, 255), rng->uniform(0, 255));
-                cv::drawContours(outimg, vector<vector<cv::Point>>{contours[0]}, 0, color, 3);
-            }
-        }
-
-        clump->calcClumpPrior();
-
     }
 
+    void saveInitialCellBoundaries(json &initialCellBoundaries, Image *image, Clump *clump, int clumpIdx) {
+        for (int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
+            Cell *cell = &(clump->cells[cellIdx]);
+            json initialCellBoundary;
+            for (cv::Point &point : cell->cytoBoundary) {
+                initialCellBoundary.push_back({point.x, point.y});
+            }
+            initialCellBoundaries[clumpIdx][cellIdx] = initialCellBoundary;
+        }
+
+        if (clumpIdx % 100 == 0) {
+            image->writeJSON("initialCellBoundaries", initialCellBoundaries);
+        }
+    }
+
+    void loadInitialCellBoundaries(json &initialCellBoundaries, Image *image, vector<Clump> *clumps) {
+        initialCellBoundaries = image->loadJSON("initialCellBoundaries");
+        for (int clumpIdx = 0; clumpIdx < initialCellBoundaries.size(); clumpIdx++) {
+            Clump *clump = &(*clumps)[clumpIdx];
+            json jsonClumpContours = initialCellBoundaries[clumpIdx];
+            if (jsonClumpContours == nullptr) continue;
+            int jsonNumberCells = initialCellBoundaries[clumpIdx].size();
+            for (int cellIdx = 0; cellIdx < jsonNumberCells; cellIdx++) {
+                json jsonCellContour = initialCellBoundaries[clumpIdx][cellIdx];
+                // Will not load incomplete clumps
+                if (jsonCellContour == nullptr) break;
+                vector<cv::Point> contour;
+                for (json &jsonPoint : jsonCellContour) {
+                    int x = jsonPoint[0];
+                    int y = jsonPoint[1];
+                    cv::Point point = cv::Point(x, y);
+                    contour.push_back(point);
+                }
+                Cell *cell = &clump->cells[cellIdx];
+                cell->cytoBoundary = contour;
+                generateMaskFromBoundary(cell);
+                // Clump cyto boundaries are fully loaded
+                if (cellIdx == jsonNumberCells - 1) {
+                    clump->initCytoBoundariesLoaded = true;
+                }
+            }
+
+        }
+    }
 
     cv::Mat runInitialCellSegmentation(Image *image, int threshold1, int threshold2, bool debug) {
         vector<Clump> *clumps = &image->clumps;
@@ -301,41 +342,41 @@ namespace segment {
         for (unsigned int c = 0; c < clumps->size(); c++) {
             Clump *clump = &(*clumps)[c];
             clump->createCells();
-            // sanity check: view all the cell array sizes for each clump
-            //image->log("Clump: %u, # of nuclei boundaries: %lu, # of cells: %lu\n",
-            //       c, clump->nucleiBoundaries.size(), clump->cells.size());
         }
-
 
         cv::Mat outimg = image->mat.clone();
         cv::RNG rng(12345);
 
+        json initialCellBoundaries;
 
-        vector<shared_future<void>> allThreads;
-        vector<Clump>::iterator clumpIterator = clumps->begin();
-        int numThreads = 8;
-        do {
-            // Fill thread queue
-            while (allThreads.size() < numThreads && clumpIterator < clumps->end()) {
-                Clump *clump = &(*clumpIterator);
-                int clumpIdx = clumpIterator - clumps->begin();
-                clumpIterator++;
-                shared_future<void> thread_object = async(&startInitialCellSegmentationThread, image, clump, clumpIdx, &rng, outimg, debug);
-                allThreads.push_back(thread_object);
+        loadInitialCellBoundaries(initialCellBoundaries, image, clumps);
+
+        function<void(Clump *, int)> threadFunction = [&image, &debug](Clump *clump, int clumpIdx) {
+            if (clump->initCytoBoundariesLoaded) {
+                image->log("Loaded clump %u initial cell boundaries from file\n", clumpIdx);
+                return;
+            }
+            startInitialCellSegmentationThread(image, clump, clumpIdx, debug);
+        };
+
+        function<void(Clump *, int)> threadDoneFunction = [&initialCellBoundaries, &image, &rng, &outimg](Clump *clump, int clumpIdx) {
+            saveInitialCellBoundaries(initialCellBoundaries, image, clump, clumpIdx);
+            for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
+                Cell *cell = &clump->cells[cellIdx];
+                vector<cv::Point> contour = clump->undoBoundingRect(cell->cytoBoundary);
+                cv::Scalar color = cv::Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
+                cv::drawContours(outimg, vector<vector<cv::Point>>{contour}, 0, color, 3);
             }
 
-            // Wait for a thread to finish
-            auto timeout = std::chrono::milliseconds(10);
-            for (int i = 0; i < allThreads.size(); i++) {
-                shared_future<void> thread = allThreads[i];
-                if (thread.valid() && thread.wait_for(timeout) == future_status::ready) {
-                    thread.get();
-                    allThreads.erase(allThreads.begin() + i);
-                    break;
-                }
-            }
+            //TODO: save cp to file also
+            clump->calcClumpPrior();
 
-        } while(allThreads.size() > 0 || clumpIterator < clumps->end());
+        };
+
+        int maxThreads = 8;
+        ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
+
+        image->writeJSON("initialCellBoundaries", initialCellBoundaries);
 
         return outimg;
     }

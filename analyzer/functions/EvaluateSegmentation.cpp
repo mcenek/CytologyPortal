@@ -94,7 +94,7 @@ namespace segment {
 
         for (int i = 0; i < image->clumps.size(); i++) {
             Clump *clump = &image->clumps[i];
-            vector<vector<cv::Point>> cellContours = clump->finalCellContours;
+            vector<vector<cv::Point>> cellContours = clump->getFinalCellContours();
             vector<cv::Mat> masks = generateMasks(image->mat.rows, image->mat.cols, cellContours);
             for (cv::Mat mask : masks) {
                 estimatedMasks.push_back(mask);

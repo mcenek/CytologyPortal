@@ -14,6 +14,7 @@ namespace segment {
         this->clumps = clumps;
         this->threadFunction = threadFunction;
         this->threadDoneFunction = threadDoneFunction;
+        start();
     }
 
     void ClumpsThread::start() {

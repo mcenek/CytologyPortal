@@ -1,4 +1,5 @@
 #include "OverlappingCellSegmentation.h"
+#include "../objects/ClumpsThread.h"
 #include "opencv2/opencv.hpp"
 #include "DRLSE.h"
 #include "SegmenterTools.h"
@@ -45,7 +46,6 @@ namespace segment {
         int cellsConverged = 0;
 
         if (clumpHasSingleCell(clump)) cellsConverged = clump->cells.size();
-        if (clump->finalCellContours.size() == clump->cells.size()) return;
 
         int i = 0;
         while (cellsConverged < clump->cells.size() && i < 1000) {
@@ -63,6 +63,7 @@ namespace segment {
                 if (i != 0 && i % 50 == 0) {
                     if (isConverged(cellI)) {
                         cellsConverged++;
+                        cellI->finalContour = cellI->getPhiContour();
                         cout << "converged" << endl;
                     }
                 }
@@ -70,11 +71,12 @@ namespace segment {
             }
             i++;
         }
-        vector<vector<cv::Point>> finalContours = clump->getFinalCellContours();
+
 
         clump->edgeEnforcer.release();
         clump->clumpPrior.release();
 
+        /*
         for (unsigned int cellIdxI = 0; cellIdxI < clump->cells.size(); cellIdxI++) {
             Cell *cell = &clump->cells[cellIdxI];
             cell->phi.release();
@@ -88,11 +90,57 @@ namespace segment {
             }
 
         }
+         */
 
 
 
     }
 
+
+    void saveFinalCellBoundaries(json &finalCellBoundaries, Image *image, Clump *clump, int clumpIdx) {
+        for (int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
+            Cell *cell = &(clump->cells[cellIdx]);
+            json finalCellBoundary;
+            for (cv::Point &point : cell->finalContour) {
+                finalCellBoundary.push_back({point.x, point.y});
+            }
+            finalCellBoundaries[clumpIdx][cellIdx] = finalCellBoundary;
+        }
+
+        if (clumpIdx % 100 == 0) {
+            image->writeJSON("finalCellBoundaries", finalCellBoundaries);
+        }
+    }
+
+    void loadFinalCellBoundaries(json &finalCellBoundaries, Image *image, vector<Clump> *clumps) {
+        finalCellBoundaries = image->loadJSON("finalCellBoundaries");
+        for (int clumpIdx = 0; clumpIdx < finalCellBoundaries.size(); clumpIdx++) {
+            Clump *clump = &(*clumps)[clumpIdx];
+            json jsonClumpContours = finalCellBoundaries[clumpIdx];
+            if (jsonClumpContours == nullptr) continue;
+            int jsonNumberCells = finalCellBoundaries[clumpIdx].size();
+            for (int cellIdx = 0; cellIdx < jsonNumberCells; cellIdx++) {
+                json jsonCellContour = finalCellBoundaries[clumpIdx][cellIdx];
+                // Will not load incomplete clumps
+                if (jsonCellContour == nullptr) break;
+                vector<cv::Point> contour;
+                for (json &jsonPoint : jsonCellContour) {
+                    int x = jsonPoint[0];
+                    int y = jsonPoint[1];
+                    cv::Point point = cv::Point(x, y);
+                    contour.push_back(point);
+                }
+                Cell *cell = &clump->cells[cellIdx];
+                cell->finalContour = contour;
+                // Clump cyto boundaries are fully loaded
+                if (cellIdx == jsonNumberCells - 1) {
+                    clump->finalCellContoursLoaded = true;
+                }
+            }
+
+        }
+    }
+    
     /*
        Overlapping Segmentation (Distance Map)
        https://cs.adelaide.edu.au/~zhi/publications/paper_TIP_Jan04_2015_Finalised_two_columns.pdf
@@ -100,6 +148,10 @@ namespace segment {
      */
     void runOverlappingSegmentation(Image *image) {
         vector<Clump> *clumps = &image->clumps;
+
+        json finalCellBoundaries;
+
+        loadFinalCellBoundaries(finalCellBoundaries, image, clumps);
 
 
         for (unsigned int clumpIdx = 0; clumpIdx < clumps->size(); clumpIdx++) {
@@ -113,32 +165,22 @@ namespace segment {
 
         }
 
-        vector<shared_future<void>> allThreads;
-        vector<Clump>::iterator clumpIterator = clumps->begin();
-        int numThreads = 8;
-        do {
-            // Fill thread queue
-            while (allThreads.size() < numThreads && clumpIterator < clumps->end()) {
-                Clump *clump = &(*clumpIterator);
-                int clumpIdx = clumpIterator - clumps->begin();
-                clumpIterator++;
-                shared_future<void> thread_object = async(&startOverlappingCellSegmentationThread, image, clump, clumpIdx);
-                allThreads.push_back(thread_object);
+        function<void(Clump *, int)> threadFunction = [&image](Clump *clump, int clumpIdx) {
+            if (clump->finalCellContoursLoaded) {
+                image->log("Loaded clump %u final cell boundaries from file\n", clumpIdx);
+                return;
             }
+            startOverlappingCellSegmentationThread(image, clump, clumpIdx);
+        };
 
-            // Wait for a thread to finish
-            auto timeout = std::chrono::milliseconds(10);
-            for (int i = 0; i < allThreads.size(); i++) {
-                shared_future<void> thread = allThreads[i];
-                if (thread.valid() && thread.wait_for(timeout) == future_status::ready) {
-                    thread.get();
-                    allThreads.erase(allThreads.begin() + i);
-                    break;
-                }
-            }
+        function<void(Clump *, int)> threadDoneFunction = [&finalCellBoundaries, &image](Clump *clump, int clumpIdx) {
+            saveFinalCellBoundaries(finalCellBoundaries, image, clump, clumpIdx);
+        };
 
-        } while(allThreads.size() > 0 || clumpIterator < clumps->end());
+        int maxThreads = 8;
+        ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 
+        image->writeJSON("finalCellBoundaries", finalCellBoundaries);
     }
 
 }

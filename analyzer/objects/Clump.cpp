@@ -204,13 +204,12 @@ namespace segment {
     }
 
     vector<vector<cv::Point>> Clump::getFinalCellContours() {
+        vector<vector<cv::Point>> finalContours;
         for (unsigned int cellIdx = 0; cellIdx < this->cells.size(); cellIdx++) {
             Cell *cell = &this->cells[cellIdx];
-            cell->finalContour = this->undoBoundingRect(cell->getPhiContour());
-            this->finalCellContours.push_back(cell->finalContour);
+            finalContours.push_back(this->undoBoundingRect(cell->finalContour));
         }
-
-        return this->finalCellContours;
+        return finalContours;
     }
 
 }

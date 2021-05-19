@@ -273,7 +273,7 @@ namespace segment {
             initialCellBoundaries[clumpIdx][cellIdx] = initialCellBoundary;
         }
 
-        if (clumpIdx % 100 == 0) {
+        if (clumpIdx % 1 == 0) {
             image->writeJSON("initialCellBoundaries", initialCellBoundaries);
         }
     }
@@ -343,7 +343,7 @@ namespace segment {
             }
         };
 
-        int maxThreads = 8;
+        int maxThreads = 1;
         ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 
         image->writeJSON("initialCellBoundaries", initialCellBoundaries);

@@ -335,7 +335,6 @@ namespace segment {
                 cv::Scalar color = cv::Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
                 cv::drawContours(outimg, vector<vector<cv::Point>>{contour}, 0, color, 3);
             }
-            clump->calcClumpPrior();
         };
 
         function<void(Clump *, int)> threadDoneFunction = [&initialCellBoundaries, &image](Clump *clump, int clumpIdx) {

@@ -2,8 +2,9 @@
 #define SUBIMAGE_H
 #include "opencv2/opencv.hpp"
 
-namespace segment {
+using namespace std;
 
+namespace segment {
     class SubImage {
     public:
         cv::Mat mat;
@@ -23,6 +24,7 @@ namespace segment {
         cv::Mat undoPadding();
         cv::Mat crop(cv::Mat *mat, int x, int y, int width, int height, int paddingWidth, int paddingHeight);
     };
+    vector<SubImage> splitMat(cv::Mat *mat, int numberSubMatX, int numberSubMatY, double paddingWidth = 0.0, double paddingHeight = 0.0);
 }
 
 

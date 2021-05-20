@@ -1,16 +1,12 @@
 #include "OverlappingCellSegmentation.h"
 #include "../objects/ClumpsThread.h"
-#include "opencv2/opencv.hpp"
 #include "DRLSE.h"
-#include "SegmenterTools.h"
-#include "boost/filesystem.hpp"
-#include <thread>
-#include <future>
 
 namespace segment {
 
     bool isConverged(Cell *cellI) {
         double newPhiArea = cellI->getPhiArea();
+        // If less than 50 pixels have changed, then it is considered converged
         if (abs(cellI->phiArea - newPhiArea) < 50) {
             cellI->phiConverged = true;
 
@@ -22,6 +18,7 @@ namespace segment {
     bool clumpHasSingleCell(Clump *clump) {
         if (clump->cells.size() == 1) {
             Cell *cellI = &clump->cells[0];
+            // Cell is converged since its boundary is the clump boundary
             cellI->phiConverged = true;
             return true;
         }
@@ -67,33 +64,11 @@ namespace segment {
                         cout << "converged" << endl;
                     }
                 }
-
             }
             i++;
         }
-
-
         clump->edgeEnforcer.release();
         clump->clumpPrior.release();
-
-        /*
-        for (unsigned int cellIdxI = 0; cellIdxI < clump->cells.size(); cellIdxI++) {
-            Cell *cell = &clump->cells[cellIdxI];
-            cell->phi.release();
-            cell->shapePrior.release();
-            vector<cv::Point> finalContour = finalContours[cellIdxI];
-            string fileStem = "clump" + to_string(clumpIdx) + "cell" + to_string(cellIdxI);
-            boost::filesystem::path writePath = image->getWritePath(fileStem, ".txt");
-            std::ofstream outFile(writePath.string());
-            for (cv::Point point : finalContour) {
-                outFile << point.x << " " << point.y << endl;
-            }
-
-        }
-         */
-
-
-
     }
 
 
@@ -142,7 +117,7 @@ namespace segment {
     }
     
     /*
-       Overlapping Segmentation (Distance Map)
+       DRLSE Overlapping Segmentation (Distance Map)
        https://cs.adelaide.edu.au/~zhi/publications/paper_TIP_Jan04_2015_Finalised_two_columns.pdf
        http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.231.9150&rep=rep1&type=pdf
      */
@@ -151,25 +126,27 @@ namespace segment {
 
         json finalCellBoundaries;
 
+        // Load final cell boundaries from finalCellBoundaries.json if it exists
         loadFinalCellBoundaries(finalCellBoundaries, image, clumps);
 
+        function<void(Clump *, int)> threadFunction = [&image](Clump *clump, int clumpIdx) {
+            // Do not run the level set algorithm if the final contours have been loaded from file
+            if (clump->finalCellContoursLoaded) {
+                image->log("Loaded clump %u final cell boundaries from file\n", clumpIdx);
+                return;
+            }
 
-        for (unsigned int clumpIdx = 0; clumpIdx < clumps->size(); clumpIdx++) {
-            Clump *clump = &(*clumps)[clumpIdx];
+            image->log("Calculating clump %u's edge enforcer and clump prior", clumpIdx);
+            // Pad the edge enforcer, clump prior and the cells' phi so that the level set algorithm
+            // will not distort any cells that happen to be at the boundary of the image
             clump->edgeEnforcer = drlse::calcEdgeEnforcer(padMatrix(clump->extract(), cv::Scalar(255, 255, 255)));
-            clump->clumpPrior = padMatrix(clump->clumpPrior, cv::Scalar(255, 255, 255));
+            clump->clumpPrior = padMatrix(clump->calcClumpPrior(), cv::Scalar(255, 255, 255));
             for (unsigned int cellIdxI = 0; cellIdxI < clump->cells.size(); cellIdxI++) {
                 Cell *cellI = &clump->cells[cellIdxI];
                 cellI->phi = padMatrix(cellI->phi, 2);
             }
 
-        }
-
-        function<void(Clump *, int)> threadFunction = [&image](Clump *clump, int clumpIdx) {
-            if (clump->finalCellContoursLoaded) {
-                image->log("Loaded clump %u final cell boundaries from file\n", clumpIdx);
-                return;
-            }
+            // Run the level set algorithm
             startOverlappingCellSegmentationThread(image, clump, clumpIdx);
         };
 
@@ -180,6 +157,7 @@ namespace segment {
         };
 
         int maxThreads = 8;
+        // Spawns threads that run the thread function for each clump
         ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 
         image->writeJSON("finalCellBoundaries", finalCellBoundaries);

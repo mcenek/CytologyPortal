@@ -8,23 +8,8 @@
 using namespace std;
 
 namespace segment {
-    vector<SubImage> splitMat(cv::Mat *mat, int numberSubMatX, int numberSubMatY) {
-        int subMatWidth = ceil(mat->cols / (double) numberSubMatX);
-        int subMatHeight = ceil(mat->rows / (double) numberSubMatY);
 
 
-        vector<SubImage> subImages;
-        for (int i = 0; i < numberSubMatX; i++) {
-            for (int j = 0; j < numberSubMatY; j++) {
-                int paddingWidth = ceil(0.30 * subMatWidth);
-                int paddingHeight = ceil(0.30 * subMatHeight);
-                SubImage subImage = SubImage(mat, i, j, subMatWidth, subMatHeight, paddingWidth, paddingHeight);
-                subImages.push_back(subImage);
-                //cv::imwrite("cropped/cyto_" + to_string(i) + "_" + to_string(j) + ".jpg", cropped);
-            }
-        }
-        return subImages;
-    }
 
     SubImage startProcessingThread(Image *image, SubImage subImage, int kernelsize, int maxDist, int threshold1, int threshold2, int maxGmmIterations) {
         bool debug = true;
@@ -79,12 +64,14 @@ namespace segment {
     }
 
     cv::Mat runPreprocessing(Image *image, int kernelsize, int maxdist, int threshold1, int threshold2, int maxGmmIterations) {
-        const int subMatNumX = 4;
-        const int subMatNumY = 4;
+        const int subMatNumX = 1;
+        const int subMatNumY = 1;
         const int numThreads = 8;
 
         cv::Mat *mat = &image->mat;
-        vector<SubImage> subImages = splitMat(mat, subMatNumX, subMatNumY);
+        double paddingWidth = 0.30;
+        double paddingHeight = 0.30;
+        vector<SubImage> subImages = splitMat(mat, subMatNumX, subMatNumY, paddingWidth, paddingHeight);
         cv::Mat returnMatrixArray[subMatNumX][subMatNumY];
 
         auto start = chrono::high_resolution_clock::now();
@@ -108,7 +95,6 @@ namespace segment {
                     SubImage subImage = thread.get();
                     allThreads.erase(allThreads.begin() + i);
                     cv::Mat cropped = subImage.undoPadding();
-                    //cout << subImage.i << ", " << subImage.j << ": " << cropped.rows << ", " << cropped.cols << endl;
                     returnMatrixArray[subImage.i][subImage.j] = cropped;
                     break;
                 }

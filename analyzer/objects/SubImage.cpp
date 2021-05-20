@@ -18,6 +18,7 @@ namespace segment {
         this->mat = getMat();
     }
 
+
     cv::Mat SubImage::getMat() {
         return crop(image, x, y, subMatWidth, subMatHeight, paddingWidth, paddingHeight);
     }
@@ -68,5 +69,27 @@ namespace segment {
             returnRect.height = mat->rows - returnRect.y;
         cv::Mat croppedMat = (*mat)(returnRect);
         return croppedMat;
+    }
+
+    // Static method (not part of SubImage class) that divides a matrix into the
+    // specified number of subImages
+    // numberSubMatX: number of subMats along the horizontal axis
+    // numberSubMatY: number of subMats along the vertical axis
+    // paddingWidth: percent of overlap along the horizontal axis
+    // paddingHeight: percent of overlap along the vertical axis
+    vector<SubImage> splitMat(cv::Mat *mat, int numberSubMatX, int numberSubMatY, double paddingWidth, double paddingHeight) {
+        int subMatWidth = ceil(mat->cols / (double) numberSubMatX);
+        int subMatHeight = ceil(mat->rows / (double) numberSubMatY);
+
+        vector<SubImage> subImages;
+        for (int i = 0; i < numberSubMatX; i++) {
+            for (int j = 0; j < numberSubMatY; j++) {
+                paddingWidth = ceil(paddingWidth * subMatWidth);
+                paddingHeight = ceil(paddingHeight * subMatHeight);
+                SubImage subImage = SubImage(mat, i, j, subMatWidth, subMatHeight, paddingWidth, paddingHeight);
+                subImages.push_back(subImage);
+            }
+        }
+        return subImages;
     }
 }

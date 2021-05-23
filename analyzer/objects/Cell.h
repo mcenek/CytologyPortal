@@ -16,6 +16,7 @@ namespace segment {
         cv::Point nucleusCenter;
         cv::Point geometricCenter; //Currently unassigned
         vector<cv::Point> cytoBoundary;
+        vector<cv::Point> cytoAssocs;
         cv::Mat cytoMask;
         //cv::Mat nucleusMask; //Used to avoid re-computing the nucleiMasks
         vector<cv::Point> nucleusBoundary;
@@ -31,10 +32,13 @@ namespace segment {
         float calcMaxRadius(); //Used for shape priors
         cv::Vec3b generateColor();
 
-        cv::Point computeCenter();
+        cv::Point computeNucleusCenter();
+        void generateBoundaryFromMask();
+        void generateMaskFromBoundary();
         void initializePhi();
         double getPhiArea();
         vector<cv::Point> getPhiContour();
+        cv::Point calcGeometricCenter();
         cv::Mat calcShapePrior();
 
 

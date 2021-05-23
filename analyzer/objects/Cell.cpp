@@ -25,9 +25,9 @@ namespace segment {
     }
 
     // if the nucleusBoundary is defined, compute the center of the nucleus
-    cv::Point Cell::computeCenter() {
+    cv::Point Cell::computeNucleusCenter() {
         if (this->nucleusBoundary.empty())
-            cerr << "nucleusBoundary must be defined and present before Cell::computeCenter() can be run." << "\n";
+            cerr << "nucleusBoundary must be defined and present before Cell::computeNucleusCenter() can be run." << "\n";
         double sumX = 0.0, sumY = 0.0;
         int count = 0;
         for (cv::Point p : nucleusBoundary) {
@@ -40,9 +40,30 @@ namespace segment {
         return this->nucleusCenter;
     }
 
+    void Cell::generateBoundaryFromMask() {
+        vector<vector<cv::Point>> contours;
+        cv::findContours(this->cytoMask, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        if (!contours.empty()) {
+            vector <cv::Point> maxContour;
+            int maxArea = 0;
+            for (vector <cv::Point> contour : contours) {
+                int area = cv::contourArea(contour);
+                if (area > maxArea) {
+                    maxArea = area;
+                    maxContour = contour;
+                }
+            }
+            this->cytoBoundary = maxContour;
+        }
+    }
+
+    void Cell::generateMaskFromBoundary() {
+        this->cytoMask = cv::Mat::zeros(this->clump->boundingRect.height, this->clump->boundingRect.width, CV_8U);
+        cv::drawContours(this->cytoMask, vector<vector<cv::Point>>{this->cytoBoundary}, 0, 255, CV_FILLED);
+    }
+
     void Cell::initializePhi() {
-        if (this->cytoMask.empty())
-            cerr << "cytoMask must be defined and present before Cell::initializePhi() can be run." << "\n";
+        this->generateMaskFromBoundary();
         this->cytoMask.convertTo(this->phi, CV_32FC1, 1.0/255);
         this->cytoMask.release();
 
@@ -95,6 +116,13 @@ namespace segment {
         return phiContour;
     }
 
+
+    cv::Point Cell::calcGeometricCenter() {
+        cv::Moments m = cv::moments(this->cytoMask, true);
+        cv::Point p(m.m10 / m.m00, m.m01 / m.m00);
+        this->geometricCenter = p;
+        return p;
+    };
 
     cv::Mat Cell::calcShapePrior() {
         cv::Mat temp;

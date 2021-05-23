@@ -42,7 +42,7 @@ namespace segment {
         // mask the clump from the image, then return image cropped to show only the clump
         cv::Mat extract(bool showBoundary=false);
         // If nucleiBoundaries are defined, compute the center of each nuclei
-        vector<cv::Point> computeCenters();
+        vector<cv::Point> computeNucleusCenters();
         // Allows for the reversal of computeOffsetContour, as used to generate nuclei_boundaries.png
         vector<vector<cv::Point>> undoOffsetContour();
         vector<cv::Point> undoBoundingRect(vector<cv::Point> tmpBoundaries);

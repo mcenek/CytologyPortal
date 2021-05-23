@@ -45,6 +45,8 @@ namespace segment {
             Cell *cell = &clump->cells[0];
             cell->cytoMask = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
             cv::drawContours(cell->cytoMask, vector<vector<cv::Point>>{clump->offsetContour}, -1, 255, CV_FILLED);
+            cell->generateBoundaryFromMask();
+            cell->cytoMask.release();
             return;
         }
 
@@ -54,16 +56,29 @@ namespace segment {
                 if (cv::pointPolygonTest(clump->offsetContour, point, false) >= 0) {
                     Cell *associatedCell = findAssociatedCell(point, clump);
                     if (associatedCell == nullptr) continue;
-
-                    if (associatedCell->cytoMask.empty()) {
-                        associatedCell->cytoMask = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
-                    }
-                    associatedCell->cytoMask.at<unsigned char>(row, col) = 255;
+                    cv::Point assoc = cv::Point(col, row);
+                    associatedCell->cytoAssocs.push_back(assoc);
                 }
             }
         }
+    }
 
 
+    void associationsToBoundaries(Clump *clump) {
+        if (clump->cells.size() > 1) {
+            for (int i = 0; i < clump->cells.size(); i++) {
+                Cell *cell = &clump->cells[i];
+                cell->cytoMask = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
+                for (const cv::Point &association : cell->cytoAssocs) {
+                    cell->cytoMask.at<unsigned char>(association.y, association.x) = 255;
+                }
+                cell->cytoAssocs.clear();
+                cell->cytoAssocs.shrink_to_fit();
+
+                cell->generateBoundaryFromMask();
+                cell->cytoMask.release();
+            }
+        }
     }
 
     float findDistanceToNearestNucleus(Clump *clump, Cell *cell) {
@@ -94,39 +109,6 @@ namespace segment {
 
                 cell->cytoMask = contourMask;
             }
-        }
-    }
-
-    void generateBoundaryFromMask(Cell *cell) {
-        vector<vector<cv::Point>> contours;
-        cv::findContours(cell->cytoMask, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-        if (!contours.empty()) {
-            vector <cv::Point> maxContour;
-            int maxArea = 0;
-            for (vector <cv::Point> contour : contours) {
-                int area = cv::contourArea(contour);
-                if (area > maxArea) {
-                    maxArea = area;
-                    maxContour = contour;
-                }
-            }
-            cell->cytoBoundary = maxContour;
-        }
-    }
-
-    void generateMaskFromBoundary(Cell *cell) {
-        cell->cytoMask = cv::Mat::zeros(cell->clump->boundingRect.height, cell->clump->boundingRect.width, CV_8U);
-        cv::drawContours(cell->cytoMask, vector<vector<cv::Point>>{cell->cytoBoundary}, 0, 255, CV_FILLED);
-    }
-
-    void getContoursFromMask(Clump *clump) {
-        for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
-            Cell *cell = &clump->cells[cellIdx];
-            // Finds the biggest contour for the cell, if it finds multiple
-            generateBoundaryFromMask(cell);
-
-            // Update the mask so that only the biggest contour is there
-            generateMaskFromBoundary(cell);
         }
     }
 
@@ -162,21 +144,12 @@ namespace segment {
         return ret;
     }
 
-    void calculateGeometricCenters(Clump *clump) {
-        for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
-            Cell *cell = &clump->cells[cellIdx];
-            cv::Moments m = cv::moments(cell->cytoMask, true);
-            cv::Point p(m.m10 / m.m00, m.m01 / m.m00);
-            cell->geometricCenter = p;
-        }
-    }
 
     void startInitialCellSegmentationThread(Image *image, Clump *clump, int clumpIdx, bool debug) {
         image->log("Beginning initial cell segmentation for clump %d\n", clumpIdx);
 
         associateClumpBoundariesWithCell(clump, clumpIdx, debug);
-        getContoursFromMask(clump);
-        calculateGeometricCenters(clump);
+        associationsToBoundaries(clump);
 
         //Calculate extremal contour extensions for each cell
         for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
@@ -202,11 +175,14 @@ namespace segment {
                 cv::drawContours(comparatorCytoBoundaryMask, vector<vector<cv::Point>>{comparatorCytoContour}, 0, 255, 2);
 
                 cv::bitwise_and(cytoBoundaryMask, comparatorCytoBoundaryMask, sharedEdge);
+                cytoBoundaryMask.release();
+                comparatorCytoBoundaryMask.release();
 
 
                 if (cv::countNonZero(sharedEdge) > 0) {
                     vector<vector<cv::Point>> sharedEdgeVector;
                     cv::findContours(sharedEdge, sharedEdgeVector, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+                    sharedEdge.release();
 
                     //Sort line as contours are not implicitly ordered
                     struct contoursCmpY {
@@ -246,22 +222,32 @@ namespace segment {
                     }
 
                     if (start != -1 && end != -1) {
-                        cv::Mat overlappingContour = cv::Mat::zeros(cell->cytoMask.rows,cell->cytoMask.cols, CV_8U);
+                        cv::Mat overlappingContour = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
                         float angle = angleBetween(startPoint, endPoint);
                         cv::Point midpoint = getMidpoint(startPoint, endPoint);
                         double width = cv::norm(startPoint-endPoint);
                         double height = width / 2;
                         cv::RotatedRect rotatedRect = cv::RotatedRect(midpoint, cv::Size2f(width,height), angle);
                         cv::ellipse(overlappingContour, rotatedRect, cv::Scalar(255), -1);
+                        //cyto mask is using up all the memory, recalculate cyto mask from boundary instead each time
+
+                        comparatorCell->generateMaskFromBoundary();
                         cv::bitwise_and(overlappingContour, comparatorCell->cytoMask, overlappingContour);
+                        comparatorCell->cytoMask.release();
+
+                        cell->generateMaskFromBoundary();
                         cell->cytoMask += overlappingContour;
+                        overlappingContour.release();
+
+                        // Update the cytoBoundary with the changes made to the cytoMask
+                        cell->generateBoundaryFromMask();
+                        cell->cytoMask.release();
                     }
                 }
             }
-            // Update the cytoBoundary with the changes made to the cytoMask
-            generateBoundaryFromMask(cell);
         }
     }
+
 
     void saveInitialCellBoundaries(json &initialCellBoundaries, Image *image, Clump *clump, int clumpIdx) {
         for (int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
@@ -298,7 +284,6 @@ namespace segment {
                 }
                 Cell *cell = &clump->cells[cellIdx];
                 cell->cytoBoundary = contour;
-                generateMaskFromBoundary(cell);
                 // Clump cyto boundaries are fully loaded
                 if (cellIdx == jsonNumberCells - 1) {
                     clump->initCytoBoundariesLoaded = true;

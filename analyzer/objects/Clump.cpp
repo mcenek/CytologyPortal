@@ -109,10 +109,10 @@ namespace segment {
     }
 
     // If nucleiBoundaries are defined, compute the center of each nuclei
-    vector<cv::Point> Clump::computeCenters()
+    vector<cv::Point> Clump::computeNucleusCenters()
     {
         if(this->nucleiBoundaries.empty())
-            cerr << "nucleiBoundaries must be defined and present before Clump::computeCenters() can be run." << "\n";
+            cerr << "nucleiBoundaries must be defined and present before Clump::computeNucleusCenters() can be run." << "\n";
         this->nucleiCenters.clear();
         for(vector<cv::Point> nucleus : nucleiBoundaries)
         {
@@ -138,7 +138,7 @@ namespace segment {
             Cell cell;
             cell.clump = this;
             cell.nucleusBoundary = vector<cv::Point>(*boundary);
-            cell.computeCenter();
+            cell.computeNucleusCenter();
             //cell.generateColor(); //TODO: Not strictly guarenteed to be unique.. Could lead to segmentation errors as currently implemented
 
             this->cells.push_back(cell);

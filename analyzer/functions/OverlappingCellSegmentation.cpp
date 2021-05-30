@@ -60,6 +60,7 @@ namespace segment {
                 if (i != 0 && i % 50 == 0) {
                     if (isConverged(cellI)) {
                         cellsConverged++;
+
                         cellI->finalContour = cellI->getPhiContour();
                         cout << "converged" << endl;
                     }

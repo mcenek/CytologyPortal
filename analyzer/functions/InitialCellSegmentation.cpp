@@ -46,6 +46,7 @@ namespace segment {
             cell->cytoMask = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
             cv::drawContours(cell->cytoMask, vector<vector<cv::Point>>{clump->offsetContour}, -1, 255, CV_FILLED);
             cell->generateBoundaryFromMask();
+            cell->originalCytoBoundary = cell->cytoBoundary;
             cell->cytoMask.release();
             return;
         }
@@ -53,6 +54,7 @@ namespace segment {
         for (int row = 0; row < clump->boundingRect.height; row++) {
             for (int col = 0; col < clump->boundingRect.width; col++) {
                 cv::Point point = cv::Point(col, row);
+                // Check if inside clump
                 if (cv::pointPolygonTest(clump->offsetContour, point, false) >= 0) {
                     Cell *associatedCell = findAssociatedCell(point, clump);
                     if (associatedCell == nullptr) continue;
@@ -76,6 +78,8 @@ namespace segment {
                 cell->cytoAssocs.shrink_to_fit();
 
                 cell->generateBoundaryFromMask();
+                cell->originalCytoBoundary = cell->cytoBoundary;
+
                 cell->cytoMask.release();
             }
         }
@@ -145,41 +149,76 @@ namespace segment {
     }
 
 
+    void findNeighbors(Clump *clump, int clumpIdx, Image *image) {
+
+        for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
+            Cell *cell = &clump->cells[cellIdx];
+            image->log("Clump %d, Cell %d/%zu, finding neighbors\n", clumpIdx, cellIdx, clump->cells.size());
+            //TODO: If we keep this approach shared edges could be memoized
+            for (unsigned int compIdx = 0; compIdx < clump->cells.size(); compIdx++) {
+                if (cellIdx == compIdx) continue;
+                Cell *comparatorCell = &clump->cells[compIdx];
+                cv::Mat sharedEdge;
+
+                cv::Mat cytoBoundaryMask = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
+                cv::Mat comparatorCytoBoundaryMask = cv::Mat::zeros(clump->boundingRect.height,
+                                                                    clump->boundingRect.width, CV_8U);
+                vector <cv::Point> cytoContour = clump->cells[cellIdx].originalCytoBoundary;
+                if (cytoContour.size() > 0) {
+                    cv::drawContours(cytoBoundaryMask, vector < vector < cv::Point >> {cytoContour}, 0, 255, 2);
+                }
+                vector <cv::Point> comparatorCytoContour = clump->cells[compIdx].originalCytoBoundary;
+                if (comparatorCytoContour.size() > 0) {
+                    cv::drawContours(comparatorCytoBoundaryMask, vector < vector < cv::Point >> {comparatorCytoContour},
+                                     0, 255, 2);
+                }
+                cv::bitwise_and(cytoBoundaryMask, comparatorCytoBoundaryMask, sharedEdge);
+                cytoBoundaryMask.release();
+                comparatorCytoBoundaryMask.release();
+
+                if (cv::countNonZero(sharedEdge) > 0) {
+                    image->log("Clump %d, cell %d is a neighbor with cell %d\n", clumpIdx, cellIdx, compIdx);
+                    cell->neighbors.push_back(comparatorCell);
+                }
+            }
+        }
+    }
     void startInitialCellSegmentationThread(Image *image, Clump *clump, int clumpIdx, bool debug) {
         image->log("Beginning initial cell segmentation for clump %d\n", clumpIdx);
 
         associateClumpBoundariesWithCell(clump, clumpIdx, debug);
         associationsToBoundaries(clump);
+        findNeighbors(clump, clumpIdx, image);
+        image->log("Clump %d, Found all neighbors\n", clumpIdx);
 
         //Calculate extremal contour extensions for each cell
         for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
             Cell *cell = &clump->cells[cellIdx];
 
 
-            //TODO: If we keep this approach shared edges could be memoized
-            for (unsigned int compIdx = 0; compIdx < clump->cells.size(); compIdx++) {
-                if (cellIdx == compIdx) continue;
+            for (unsigned int neighborIdx = 0; neighborIdx < cell->neighbors.size(); neighborIdx++) {
+                image->log("Clump %d, Cell %d/%zu, Neighbor: %d/%zu\n", clumpIdx, cellIdx, clump->cells.size(), neighborIdx, cell->neighbors.size());
 
-                Cell *comparatorCell = &clump->cells[compIdx];
-
+                Cell *comparatorCell = cell->neighbors[neighborIdx];
 
                 cv::Mat sharedEdge;
 
                 cv::Mat cytoBoundaryMask = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
                 cv::Mat comparatorCytoBoundaryMask = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
-
-                vector<cv::Point> cytoContour = clump->cells[cellIdx].cytoBoundary;
-                cv::drawContours(cytoBoundaryMask, vector<vector<cv::Point>>{cytoContour}, 0, 255, 2);
-
-                vector<cv::Point> comparatorCytoContour = clump->cells[compIdx].cytoBoundary;
-                cv::drawContours(comparatorCytoBoundaryMask, vector<vector<cv::Point>>{comparatorCytoContour}, 0, 255, 2);
-
+                vector<cv::Point> cytoContour = cell->originalCytoBoundary;
+                if (cytoContour.size() > 0) {
+                    cv::drawContours(cytoBoundaryMask, vector<vector<cv::Point>>{cytoContour}, 0, 255, 2);
+                }
+                vector<cv::Point> comparatorCytoContour = comparatorCell->originalCytoBoundary;
+                if (comparatorCytoContour.size() > 0) {
+                    cv::drawContours(comparatorCytoBoundaryMask, vector<vector<cv::Point>>{comparatorCytoContour}, 0, 255, 2);
+                }
                 cv::bitwise_and(cytoBoundaryMask, comparatorCytoBoundaryMask, sharedEdge);
                 cytoBoundaryMask.release();
                 comparatorCytoBoundaryMask.release();
 
-
                 if (cv::countNonZero(sharedEdge) > 0) {
+                    image->log("Clump %d, cell %d is a neighbor with cell %d, adding ellipse\n", clumpIdx, cellIdx, neighborIdx);
                     vector<vector<cv::Point>> sharedEdgeVector;
                     cv::findContours(sharedEdge, sharedEdgeVector, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
                     sharedEdge.release();
@@ -220,7 +259,6 @@ namespace segment {
                             endPoint = endPt;
                         }
                     }
-
                     if (start != -1 && end != -1) {
                         cv::Mat overlappingContour = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
                         float angle = angleBetween(startPoint, endPoint);
@@ -232,8 +270,10 @@ namespace segment {
                         //cyto mask is using up all the memory, recalculate cyto mask from boundary instead each time
 
                         comparatorCell->generateMaskFromBoundary();
+
                         cv::bitwise_and(overlappingContour, comparatorCell->cytoMask, overlappingContour);
                         comparatorCell->cytoMask.release();
+
 
                         cell->generateMaskFromBoundary();
                         cell->cytoMask += overlappingContour;
@@ -242,10 +282,12 @@ namespace segment {
                         // Update the cytoBoundary with the changes made to the cytoMask
                         cell->generateBoundaryFromMask();
                         cell->cytoMask.release();
+                        image->log("Clump %d, cell %d is a neighbor with cell %d, added ellipse\n", clumpIdx, cellIdx, neighborIdx);
                     }
                 }
             }
         }
+        image->log("Finishing initial cell segmentation for clump %d\n", clumpIdx);
     }
 
 
@@ -275,12 +317,20 @@ namespace segment {
                 json jsonCellContour = initialCellBoundaries[clumpIdx][cellIdx];
                 // Will not load incomplete clumps
                 if (jsonCellContour == nullptr) break;
+                bool validContour = true;
                 vector<cv::Point> contour;
                 for (json &jsonPoint : jsonCellContour) {
+                    if (jsonPoint.size() != 2) {
+                        validContour = false;
+                        break;
+                    }
                     int x = jsonPoint[0];
                     int y = jsonPoint[1];
                     cv::Point point = cv::Point(x, y);
                     contour.push_back(point);
+                }
+                if (!validContour) {
+                    break;
                 }
                 Cell *cell = &clump->cells[cellIdx];
                 cell->cytoBoundary = contour;
@@ -308,7 +358,7 @@ namespace segment {
 
         loadInitialCellBoundaries(initialCellBoundaries, image, clumps);
 
-        function<void(Clump *, int)> threadFunction = [&image, &debug, &rng, &outimg](Clump *clump, int clumpIdx) {
+        function<void(Clump *, int)> threadFunction = [&image, &debug, &rng, &outimg](Clump *clump, int clumpIdx) {\
             if (clump->initCytoBoundariesLoaded) {
                 image->log("Loaded clump %u initial cell boundaries from file\n", clumpIdx);
             } else {
@@ -316,7 +366,23 @@ namespace segment {
             }
             for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
                 Cell *cell = &clump->cells[cellIdx];
+
+                cell->originalCytoBoundary.clear();
+                cell->originalCytoBoundary.shrink_to_fit();
+
                 vector<cv::Point> contour = clump->undoBoundingRect(cell->cytoBoundary);
+                if (contour.size() == 0) {
+                    // Delete cell if there are no more boundaries
+                    for (unsigned int neighborIdx = 0; neighborIdx < cell->neighbors.size(); neighborIdx++) {
+                        Cell *neighborCell = cell->neighbors[neighborIdx];
+                        //Remove cell from its neighbors
+                        std::remove(neighborCell->neighbors.begin(), neighborCell->neighbors.end(), cell);
+                    }
+                    // Remove cell from the cell list
+                    clump->cells.erase(clump->cells.begin() + cellIdx);
+                    cellIdx--;
+                    continue;
+                }
                 cv::Scalar color = cv::Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
                 cv::drawContours(outimg, vector<vector<cv::Point>>{contour}, 0, color, 3);
             }
@@ -325,10 +391,11 @@ namespace segment {
         function<void(Clump *, int)> threadDoneFunction = [&initialCellBoundaries, &image](Clump *clump, int clumpIdx) {
             if (!clump->initCytoBoundariesLoaded) {
                 saveInitialCellBoundaries(initialCellBoundaries, image, clump, clumpIdx);
+                image->log("Actually finished initial cell segmentation for clump %d\n", clumpIdx);
             }
         };
 
-        int maxThreads = 1;
+        int maxThreads = 16;
         ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 
         image->writeJSON("initialCellBoundaries", initialCellBoundaries);

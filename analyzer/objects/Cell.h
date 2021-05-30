@@ -15,6 +15,8 @@ namespace segment {
         cv::Vec3b color;
         cv::Point nucleusCenter;
         cv::Point geometricCenter; //Currently unassigned
+        vector<Cell *> neighbors;
+        vector<cv::Point> originalCytoBoundary;
         vector<cv::Point> cytoBoundary;
         vector<cv::Point> cytoAssocs;
         cv::Mat cytoMask;

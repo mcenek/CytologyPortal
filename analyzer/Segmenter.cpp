@@ -163,16 +163,22 @@ namespace segment {
         image.writeImage("cell_boundaries.png", outimg);
         outimg.release();
 
-        /*
+
         start = chrono::high_resolution_clock::now();
         if (debug) image.log("Beginning segmentation evaluation...\n");
         // If ground truths exist, use them to find the dice coefficient of the segmentation.
         double dice = evaluateSegmentation(&image);
         image.log("Dice coefficient: %f\n", dice);
+
+        ofstream diceFile;
+        diceFile.open("dice.txt");
+        diceFile << dice;
+        diceFile.close();
+
         end = std::chrono::duration_cast<std::chrono::microseconds>(
                 chrono::high_resolution_clock::now() - start).count() / 1000000.0;
         if (debug) image.log("Finished segmentation evaluation, time: %f\n", end);
-*/
+
 
         if (debug) {
             //cv::imshow("Overlapping Cell Segmentation", outimg);

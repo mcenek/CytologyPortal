@@ -9,6 +9,7 @@ namespace segment {
     namespace drlse {
 
         void updatePhi(Cell *cellI, Clump *clump, double dt, double epsilon, double mu, double kappa, double chi) {
+
             vector <cv::Mat> gradient = calcGradient(cellI->phi);
             cv::Mat regularizer = calcSignedDistanceReg(cellI->phi);
             cv::Mat dirac = calcDiracDelta(cellI->phi, epsilon);
@@ -132,6 +133,7 @@ namespace segment {
                     else row[j] = 0;
                 }
             }
+
             return heaviside;
         }
 

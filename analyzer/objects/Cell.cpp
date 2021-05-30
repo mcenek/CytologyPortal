@@ -99,10 +99,10 @@ namespace segment {
 
     vector<cv::Point> Cell::getPhiContour() {
         cv::Rect cropRect(10, 10, this->clump->boundingRect.width, this->clump->boundingRect.height);
-        cv::Mat temp = this->phi(cropRect);
+        cv::Mat temp = this->phi.clone();
+        temp = temp(cropRect);
         cv::threshold(temp, temp, 0, 1, cv::THRESH_BINARY_INV);
         temp.convertTo(temp, CV_8UC1, 255);
-
         vector<vector<cv::Point>> contours;
         cv::findContours(temp, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
         double area = 0;

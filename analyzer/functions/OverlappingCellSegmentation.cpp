@@ -60,7 +60,7 @@ namespace segment {
                 cout << "LSF Iteration " << i << ": Clump " << clumpIdx << ", Cell " << cellIdxI << endl;
 
                 if (i != 0 && i % 50 == 0) {
-                    if (isConverged(cellI) || i >= 200) {
+                    if (isConverged(cellI) || i >= 1000) {
                         cellsConverged++;
                         cellI->finalContour = cellI->getPhiContour();
                         cout << "converged" << endl;
@@ -139,7 +139,7 @@ namespace segment {
                 return;
             }
 
-            image->log("Calculating clump %u's edge enforcer and clump prior", clumpIdx);
+            image->log("Calculating clump %u's edge enforcer and clump prior\n", clumpIdx);
             // Pad the edge enforcer, clump prior and the cells' phi so that the level set algorithm
             // will not distort any cells that happen to be at the boundary of the image
             clump->edgeEnforcer = drlse::calcEdgeEnforcer(padMatrix(clump->extract(), cv::Scalar(255, 255, 255)));
@@ -148,7 +148,6 @@ namespace segment {
             for (unsigned int cellIdxI = 0; cellIdxI < clump->cells.size(); cellIdxI++) {
                 Cell *cellI = &clump->cells[cellIdxI];
                 cellI->phi = padMatrix(cellI->phi, 2);
-
 
             }
 

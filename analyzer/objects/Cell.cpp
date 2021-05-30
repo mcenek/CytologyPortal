@@ -64,6 +64,8 @@ namespace segment {
 
     void Cell::initializePhi() {
         this->generateMaskFromBoundary();
+
+        this->calcGeometricCenter();
         this->cytoMask.convertTo(this->phi, CV_32FC1, 1.0/255);
         this->cytoMask.release();
 
@@ -100,6 +102,7 @@ namespace segment {
         cv::Mat temp = this->phi(cropRect);
         cv::threshold(temp, temp, 0, 1, cv::THRESH_BINARY_INV);
         temp.convertTo(temp, CV_8UC1, 255);
+
         vector<vector<cv::Point>> contours;
         cv::findContours(temp, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
         double area = 0;
@@ -128,6 +131,7 @@ namespace segment {
         cv::Mat temp;
         this->phi.convertTo(temp, CV_8UC1, 255);
         temp = 1 - temp;
+
         vector<vector<cv::Point>> contours;
 
         cv::findContours(temp, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
@@ -142,7 +146,6 @@ namespace segment {
                     temp.at<float>(i, j) = 0.0;
             }
         }
-
 
         this->shapePrior = temp;
         return this->shapePrior;

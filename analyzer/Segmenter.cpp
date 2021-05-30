@@ -171,7 +171,8 @@ namespace segment {
         image.log("Dice coefficient: %f\n", dice);
 
         ofstream diceFile;
-        diceFile.open("dice.txt");
+        boost::filesystem::path writePath = image.getWritePath("dice", ".txt");
+        diceFile.open(writePath.string());
         diceFile << dice;
         diceFile.close();
 

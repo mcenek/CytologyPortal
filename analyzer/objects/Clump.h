@@ -20,6 +20,7 @@ namespace segment {
         vector<cv::Point> offsetContour;
         cv::Rect boundingRect;
         vector<vector<cv::Point>> nucleiBoundaries;
+        vector<vector<Cell *>> associatedCells;
         bool nucleiBoundariesLoaded = false;
         vector<cv::Point> nucleiCenters;
         vector<vector<cv::Point>> cytoBoundaries;

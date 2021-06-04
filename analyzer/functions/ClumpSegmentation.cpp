@@ -191,6 +191,7 @@ namespace segment {
         cv::bitwise_not(phi, phi);
 
         phi.convertTo(phi, CV_8UC1, 255.0);
+
         return phi;
     }
 
@@ -204,6 +205,12 @@ namespace segment {
     int minAreaThreshold = the minimum area, all contours smaller than this are discarded
     */
     vector<vector<cv::Point>> findFinalClumpBoundaries(cv::Mat mat, double minAreaThreshold) {
+        int rows = mat.rows;
+        int cols = mat.cols;
+        int erosion_size = 2;
+        cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2 * erosion_size + 1, 2 * erosion_size + 1), cv::Point(erosion_size, erosion_size));
+        cv::erode(mat, mat, element);
+
         //Crop gmm because some gmm outputs have a white border which interferes with find contours
         int padding = 2;
         cv::Rect cropRect(padding, padding, mat.cols - 2 * padding, mat.rows - 2 * padding);
@@ -212,18 +219,40 @@ namespace segment {
         vector<vector<cv::Point>> contours;
         cv::findContours(mat, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
 
+        double maxArea = 0;
+        double secArea = 0;
         vector<vector<cv::Point>> clumpBoundaries = vector<vector<cv::Point> >();
+
+
         for (unsigned int i = 0; i < contours.size(); i++) {
             vector<cv::Point> contour = contours[i];
             double area = cv::contourArea(contour);
+
+            printf("Clump %d\n", i);
             if (area > minAreaThreshold) {
+                if (area > maxArea) {
+                    secArea = maxArea;
+                    maxArea = area;
+
+                }
                 //Undo the cropping
                 for(unsigned int j = 0; j < contour.size(); j++) {
                     contour[j] = cv::Point(contour[j].x + padding, contour[j].y + padding);
                 }
-                clumpBoundaries.push_back(contour);
+
+                cv::Mat dilateMat = cv::Mat(rows, cols, CV_8UC1);
+                cv::drawContours(dilateMat, vector<vector<cv::Point>>{contour}, 0, 255, -1);
+                cv::dilate(dilateMat, dilateMat, element);
+                vector<vector<cv::Point>> tmpContours;
+                cv::findContours(dilateMat, tmpContours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+
+                for (vector<cv::Point> &tmpContour : tmpContours) {
+                    clumpBoundaries.push_back(tmpContour);
+                }
+
             }
         }
+        printf("MAX AREA: %f\nSEC MAX AREA: %f\n", maxArea, secArea);
         return clumpBoundaries;
     }
 

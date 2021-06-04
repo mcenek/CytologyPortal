@@ -163,6 +163,17 @@ namespace segment {
         int maxThreads = 4;
         ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 
+        int maxCell = 0;
+        int secondCell = 0;
+        for (Clump &clump : *clumps) {
+            int sizez = clump.nucleiBoundaries.size();
+            if (sizez > maxCell) {
+                secondCell = maxCell;
+                maxCell = sizez;
+            }
+        }
+        cout << "MAX "<< maxCell << endl;
+        cout << "MAX2 "<< secondCell << endl;
         image->writeJSON("nucleiBoundaries", nucleiBoundaries);
 
         removeClumpsWithoutNuclei(clumps);

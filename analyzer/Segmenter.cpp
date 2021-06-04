@@ -81,8 +81,17 @@ namespace segment {
         start = chrono::high_resolution_clock::now();
         if (debug) image.log("Beginning GMM Output post processing...\n");
 
+
+
+
+
+
+
         // Finds the clump boundaries using the gmmPredictions mask
         vector <vector<cv::Point>> clumpBoundaries = findFinalClumpBoundaries(gmmPredictions, minAreaThreshold);
+
+        printf("CLUMPS: %zu\n", clumpBoundaries.size());
+
 
         // Color the clumps different colors and then write to png file
         outimg = drawColoredContours(image.mat, &clumpBoundaries);
@@ -139,6 +148,8 @@ namespace segment {
         end = std::chrono::duration_cast<std::chrono::microseconds>(
                 chrono::high_resolution_clock::now() - start).count() / 1000000.0;
         if (debug) image.log("Finished initial cell segmentation, time: %f\n", end);
+
+        return;
 
         start = chrono::high_resolution_clock::now();
         if (debug) image.log("Beginning segmentation by level set functions...\n");

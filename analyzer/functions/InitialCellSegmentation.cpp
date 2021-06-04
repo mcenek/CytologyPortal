@@ -71,7 +71,6 @@ namespace segment {
                     float x = i + nucleusCenter.x;
                     float y = j + nucleusCenter.y;
                     cv::Point point = cv::Point(x, y);
-                    cout << "nearby: " << point << endl;
                     bool insideClump = cv::pointPolygonTest(clump->offsetContour, point, false) >= 0;
                     bool validAssociation = testLineViability(point, clump, cell);
                     if (insideClump && validAssociation) {
@@ -252,7 +251,7 @@ namespace segment {
                 Cell *comparatorCell = cell->neighbors[compIdx];
                 if (cell == comparatorCell) continue;
 
-                image->log("Clump %d, Cell %d/%zu, Neighbors: %d/%zu\n", clumpIdx, cellIdx, clump->cells.size(), compIdx, cell->neighbors.size());
+                image->log("Clump %d, Cell %d/%zu, Neighbors: %d/%zu\n", clumpIdx, cellIdx, clump->cells.size() - 1, compIdx, cell->neighbors.size() - 1);
 
                 vector <cv::Point> cytoContour = cell->originalCytoBoundary;
                 vector <cv::Point> comparatorCytoContour = comparatorCell->originalCytoBoundary;
@@ -274,8 +273,6 @@ namespace segment {
                 comparatorCytoBoundaryMask.release();
 
                 if (cv::countNonZero(sharedEdge) > 0) {
-                    //cell->neighbors.push_back(comparatorCell);
-                    image->log("Clump %d, cell %d is a neighbor with cell %d, adding ellipse\n", clumpIdx, cellIdx, compIdx);
                     vector<vector<cv::Point>> sharedEdgeVector;
                     cv::findContours(sharedEdge, sharedEdgeVector, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
                     sharedEdge.release();
@@ -357,7 +354,7 @@ namespace segment {
             initialCellBoundaries[clumpIdx][cellIdx] = initialCellBoundary;
         }
 
-        if (clumpIdx % 1 == 0) {
+        if (clumpIdx % 100 == 0 || clump->cells.size() > 5000) {
             image->writeJSON("initialCellBoundaries", initialCellBoundaries);
         }
     }
@@ -447,7 +444,6 @@ namespace segment {
         function<void(Clump *, int)> threadDoneFunction = [&initialCellBoundaries, &image](Clump *clump, int clumpIdx) {
             if (!clump->initCytoBoundariesLoaded) {
                 saveInitialCellBoundaries(initialCellBoundaries, image, clump, clumpIdx);
-                image->log("Actually finished initial cell segmentation for clump %d\n", clumpIdx);
             }
         };
 

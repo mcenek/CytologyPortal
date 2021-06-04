@@ -46,6 +46,11 @@ namespace segment {
                     }
                     allThreads.erase(allThreads.begin() + i);
                     threadClumpIdx.erase(threadClumpIdx.begin() + i);
+                    if (allThreads.size() > 0 && clumpIterator == this->clumps->end()) {
+                        for (int waitingClumpIdx : threadClumpIdx) {
+                            printf("Still waiting for clump: %d\n", waitingClumpIdx);
+                        }
+                    }
                     break;
                 }
             }

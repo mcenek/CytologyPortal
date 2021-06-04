@@ -16,6 +16,21 @@ namespace segment {
         return nucleiDistances;
     }
 
+    pair<Cell*, float> findClosestCell(cv::Point point, Clump *clump) {
+        Cell *closestCell = nullptr;
+        float minDistance = FLT_MAX;
+        for (unsigned int i = 0; i < clump->cells.size(); i++) {
+            Cell *cell = &clump->cells[i];
+            float distance = getDistance(point, cell->nucleusCenter);
+            if (distance < minDistance && distance != 0) {
+                closestCell = cell;
+                minDistance = distance;
+            }
+        }
+        pair<Cell*, float> closestCellDistance(closestCell, minDistance);
+        return closestCellDistance;
+    }
+
     void sortNucleiDistances(vector<pair<Cell*, double>> *nucleiDistances) {
         // order the nuclei indices by increasing distance
         sort(nucleiDistances->begin(), nucleiDistances->end(),
@@ -37,6 +52,7 @@ namespace segment {
         }
         return nullptr;
     }
+
 
     void associateClumpBoundariesWithCell(Clump *clump, int c, bool debug) {
         if (clump->cells.size() == 1) {
@@ -85,12 +101,14 @@ namespace segment {
         for (int row = 0; row < clump->boundingRect.height; row++) {
             for (int col = 0; col < clump->boundingRect.width; col++) {
                 cv::Point point = cv::Point(col, row);
+                if (clump->associatedCells[row][col] != nullptr) continue;
+
                 // Check if inside clump
                 if (cv::pointPolygonTest(clump->offsetContour, point, false) >= 0) {
                     Cell *associatedCell = findAssociatedCell(point, clump);
                     if (associatedCell == nullptr) continue;
-                    cv::Point assoc = cv::Point(col, row);
-                    associatedCell->cytoAssocs.push_back(assoc);
+                    associatedCell->cytoAssocs.push_back(point);
+                    clump->associatedCells[row][col] = associatedCell;
                 }
             }
         }

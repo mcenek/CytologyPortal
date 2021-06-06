@@ -149,8 +149,6 @@ namespace segment {
                 chrono::high_resolution_clock::now() - start).count() / 1000000.0;
         if (debug) image.log("Finished initial cell segmentation, time: %f\n", end);
 
-        return;
-
         start = chrono::high_resolution_clock::now();
         if (debug) image.log("Beginning segmentation by level set functions...\n");
 

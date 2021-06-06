@@ -205,11 +205,6 @@ namespace segment {
     int minAreaThreshold = the minimum area, all contours smaller than this are discarded
     */
     vector<vector<cv::Point>> findFinalClumpBoundaries(cv::Mat mat, double minAreaThreshold) {
-        int rows = mat.rows;
-        int cols = mat.cols;
-        int erosion_size = 2;
-        cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2 * erosion_size + 1, 2 * erosion_size + 1), cv::Point(erosion_size, erosion_size));
-        cv::erode(mat, mat, element);
 
         //Crop gmm because some gmm outputs have a white border which interferes with find contours
         int padding = 2;
@@ -228,27 +223,65 @@ namespace segment {
             vector<cv::Point> contour = contours[i];
             double area = cv::contourArea(contour);
 
-            printf("Clump %d\n", i);
+            //printf("Clump %d\n", i);
             if (area > minAreaThreshold) {
-                if (area > maxArea) {
-                    secArea = maxArea;
-                    maxArea = area;
+                vector<vector<cv::Point>> candidateContours;
+                candidateContours.push_back(contour);
+                if (area > 4000000) {
+                    printf("Clump %d's contour of area %f too big\n", i, area);
+                    for (int erosion_size = 1; erosion_size < 10; erosion_size++) {
+                        printf("Clump %d, eroding with size %d\n", i, erosion_size);
+                        cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE,
+                                                                    cv::Size(2 * erosion_size + 1, 2 * erosion_size + 1),
+                                                                    cv::Point(erosion_size, erosion_size));
+                        cv::Mat tmpMat = cv::Mat(mat.rows, mat.cols, CV_8UC1);
+                        cv::drawContours(tmpMat, vector<vector<cv::Point>>{contour}, 0, 255, -1);
+                        cv::erode(tmpMat, tmpMat, element);
+                        vector<vector<cv::Point>> erodeContours;
+                        cv::findContours(tmpMat, erodeContours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
 
-                }
-                //Undo the cropping
-                for(unsigned int j = 0; j < contour.size(); j++) {
-                    contour[j] = cv::Point(contour[j].x + padding, contour[j].y + padding);
+                        if (erodeContours.size() <= 1) continue;
+                        candidateContours.clear();
+
+                        bool contoursSmallEnough = true;
+
+                        for (vector<cv::Point> &erodeContour : erodeContours) {
+                            tmpMat.release();
+                            tmpMat = cv::Mat(mat.rows, mat.cols, CV_8UC1);
+                            cv::drawContours(tmpMat, vector<vector<cv::Point>>{erodeContour}, 0, 255, -1);
+                            cv::dilate(tmpMat, tmpMat, element);
+                            vector<vector<cv::Point>> dilateContours;
+                            cv::findContours(tmpMat, dilateContours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+                            for (vector<cv::Point> &dilateContour : dilateContours) {
+                                area = cv::contourArea(dilateContour);
+                                if (area > 4000000) contoursSmallEnough = false;
+                                candidateContours.push_back(dilateContour);
+                            }
+
+                        }
+                        if (contoursSmallEnough) {
+                            break;
+                        }
+                    }
                 }
 
-                cv::Mat dilateMat = cv::Mat(rows, cols, CV_8UC1);
-                cv::drawContours(dilateMat, vector<vector<cv::Point>>{contour}, 0, 255, -1);
-                cv::dilate(dilateMat, dilateMat, element);
-                vector<vector<cv::Point>> tmpContours;
-                cv::findContours(dilateMat, tmpContours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
 
-                for (vector<cv::Point> &tmpContour : tmpContours) {
-                    clumpBoundaries.push_back(tmpContour);
+                for (vector<cv::Point> &candidateContour : candidateContours) {
+                    area = cv::contourArea(candidateContour);
+                    if (candidateContours.size() > 1) {
+                        printf("Clump %d, eroded, new area: %f\n", i, area);
+                    }
+                    if (area > maxArea) {
+                        secArea = maxArea;
+                        maxArea = area;
+                    }
+                    //Undo the cropping
+                    for(unsigned int j = 0; j < candidateContour.size(); j++) {
+                        candidateContour[j] = cv::Point(candidateContour[j].x + padding, candidateContour[j].y + padding);
+                    }
+                    clumpBoundaries.push_back(candidateContour);
                 }
+
 
             }
         }

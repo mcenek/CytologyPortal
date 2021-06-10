@@ -64,8 +64,8 @@ namespace segment {
     }
 
     cv::Mat runPreprocessing(Image *image, int kernelsize, int maxdist, int threshold1, int threshold2, int maxGmmIterations) {
-        const int subMatNumX = 8;
-        const int subMatNumY = 8;
+        const int subMatNumX = 1;
+        const int subMatNumY = 1;
         const int numThreads = 16;
 
         cv::Mat *mat = &image->mat;

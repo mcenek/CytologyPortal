@@ -22,7 +22,7 @@ namespace segment {
         cv::Mat cytoMask;
         //cv::Mat nucleusMask; //Used to avoid re-computing the nucleiMasks
         vector<cv::Point> nucleusBoundary;
-        cv::Mat shapePrior;
+        cv::Rect boundingBox;
         cv::Mat phi; //Used to store the evolving LSF front
         vector<cv::Point> finalContour;
 
@@ -37,6 +37,7 @@ namespace segment {
         cv::Point computeNucleusCenter();
         void generateBoundaryFromMask();
         void generateMaskFromBoundary();
+        cv::Rect findBoundingBox();
         void initializePhi();
         double getPhiArea();
         vector<cv::Point> getPhiContour();

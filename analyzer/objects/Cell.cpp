@@ -1,5 +1,6 @@
 #include "Cell.h"
 #include "opencv2/opencv.hpp"
+#include "../functions/SegmenterTools.h"
 
 double getRandomDouble(double x, double y) {
     double random = ((double) rand()) / (double) RAND_MAX;
@@ -62,12 +63,24 @@ namespace segment {
         cv::drawContours(this->cytoMask, vector<vector<cv::Point>>{this->cytoBoundary}, 0, 255, CV_FILLED);
     }
 
+    cv::Rect Cell::findBoundingBox() {
+        cv::Rect boundingBox = cv::boundingRect(this->cytoBoundary);
+        for (int i = 0; i < this->neighbors.size(); i++) {
+            Cell *neighbor = this->neighbors[i];
+            cv::Rect neighborBoundingBox = cv::boundingRect(neighbor->cytoBoundary);
+            boundingBox = boundingBox | neighborBoundingBox;
+        }
+        this->boundingBox = boundingBox;
+        return boundingBox;
+    }
+
     void Cell::initializePhi() {
         this->generateMaskFromBoundary();
 
         this->calcGeometricCenter();
         this->cytoMask.convertTo(this->phi, CV_32FC1, 1.0/255);
         this->cytoMask.release();
+
 
         for (int i = 0; i < this->phi.rows; i++) {
             float *row = this->phi.ptr<float>(i);
@@ -81,6 +94,7 @@ namespace segment {
         this->phiArea = this->getPhiArea();
         this->phiConverged = false;
     }
+
 
     double Cell::getPhiArea() {
         cv::Mat temp;
@@ -125,30 +139,28 @@ namespace segment {
         cv::Point p(m.m10 / m.m00, m.m01 / m.m00);
         this->geometricCenter = p;
         return p;
-    };
+    }
 
     cv::Mat Cell::calcShapePrior() {
-        cv::Mat temp;
-        this->phi.convertTo(temp, CV_8UC1, 255);
-        temp = 1 - temp;
+        cv::Mat shapePrior;
+        this->phi.convertTo(shapePrior, CV_8UC1, 255);
+        shapePrior = 1 - shapePrior;
 
         vector<vector<cv::Point>> contours;
 
-        cv::findContours(temp, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        cv::findContours(shapePrior, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
 
-        temp = cv::Mat::ones(this->phi.rows, this->phi.cols, CV_32FC1);
-        for (int i = 0; i < temp.rows; i++) {
-            for (int j = 0; j < temp.cols; j++) { //Assumes a single channel matrix
+        shapePrior = cv::Mat::ones(this->phi.rows, this->phi.cols, CV_32FC1);
+        for (int i = 0; i < shapePrior.rows; i++) {
+            for (int j = 0; j < shapePrior.cols; j++) { //Assumes a single channel matrix
                 if (cv::pointPolygonTest(contours[0], cv::Point(j, i), false) >= 0) {
                     float dist = cv::norm(cv::Point(j, i) - this->geometricCenter) / (this->calcMaxRadius());
-                    temp.at<float>(i, j) = (-2.0 / (1.0 + exp(-1 * 5 * dist)) + 2.0);
+                    shapePrior.at<float>(i, j) = (-2.0 / (1.0 + exp(-1 * 5 * dist)) + 2.0);
                 } else if (cv::pointPolygonTest(clump->offsetContour, cv::Point(j, i), false) > 0)
-                    temp.at<float>(i, j) = 0.0;
+                    shapePrior.at<float>(i, j) = 0.0;
             }
         }
-
-        this->shapePrior = temp;
-        return this->shapePrior;
+        return shapePrior;
     }
 
 }

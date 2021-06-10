@@ -191,9 +191,9 @@ namespace segment {
         for (unsigned int cellIdx = 0; cellIdx < this->cells.size(); cellIdx++) {
             Cell *cell = &this->cells[cellIdx];
             if (cell->phi.empty()) cell->initializePhi();
-            cell->calcShapePrior();
-            if (this->clumpPrior.empty()) this->clumpPrior = cell->shapePrior;
-            else cv::max(this->clumpPrior, cell->shapePrior, this->clumpPrior);
+            cv::Mat shapePrior = cell->calcShapePrior();
+            if (this->clumpPrior.empty()) this->clumpPrior = shapePrior;
+            else cv::max(this->clumpPrior, shapePrior, this->clumpPrior);
 
             //cv::imshow("Shape prior", cell->shapePrior);
             //cv::waitKey(0);

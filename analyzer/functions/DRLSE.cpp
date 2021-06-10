@@ -25,8 +25,8 @@ namespace segment {
 
         cv::Mat calcAllBinaryEnergy(Cell *cellI, Clump *clump, cv::Mat dirac) {
             cv::Mat binaryEnergy = cv::Mat::zeros(cellI->phi.rows, cellI->phi.cols, CV_32FC1);
-            for (unsigned int cellIdxJ = 0; cellIdxJ < clump->cells.size(); cellIdxJ++) {
-                Cell *cellJ = &clump->cells[cellIdxJ];
+            for (unsigned int cellIdxJ = 0; cellIdxJ < cellI->neighbors.size(); cellIdxJ++) {
+                Cell *cellJ = cellI->neighbors[cellIdxJ];
 
                 if (cellI == cellJ) {
                     continue;

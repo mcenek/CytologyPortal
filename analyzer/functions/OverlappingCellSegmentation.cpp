@@ -147,7 +147,8 @@ namespace segment {
 
             for (unsigned int cellIdxI = 0; cellIdxI < clump->cells.size(); cellIdxI++) {
                 Cell *cellI = &clump->cells[cellIdxI];
-                cellI->phi = padMatrix(cellI->phi, 2);
+                cellI->initializePhi();
+                //cellI->phi = padMatrix(cellI->phi, 2);
 
             }
 

@@ -63,36 +63,57 @@ namespace segment {
         cv::drawContours(this->cytoMask, vector<vector<cv::Point>>{this->cytoBoundary}, 0, 255, CV_FILLED);
     }
 
-    cv::Rect Cell::findBoundingBox() {
+    cv::Rect Cell::findBoundingBoxWithNeighbors() {
         cv::Rect boundingBox = cv::boundingRect(this->cytoBoundary);
         for (int i = 0; i < this->neighbors.size(); i++) {
             Cell *neighbor = this->neighbors[i];
             cv::Rect neighborBoundingBox = cv::boundingRect(neighbor->cytoBoundary);
             boundingBox = boundingBox | neighborBoundingBox;
         }
-        this->boundingBox = boundingBox;
+        int padding = 10;
+
         return boundingBox;
     }
 
     void Cell::initializePhi() {
-        this->generateMaskFromBoundary();
+        this->boundingBox = cv::boundingRect(this->cytoBoundary);
+        this->boundingBoxWithNeighbors = this->findBoundingBoxWithNeighbors();
 
-        this->calcGeometricCenter();
-        this->cytoMask.convertTo(this->phi, CV_32FC1, 1.0/255);
-        this->cytoMask.release();
-
-
-        for (int i = 0; i < this->phi.rows; i++) {
-            float *row = this->phi.ptr<float>(i);
-            for (int j = 0; j < this->phi.cols; j++) {
-                float value = row[j];
-                if (value != 0) row[j] = -2;
-                else row[j] = 2;
-            }
+        vector<cv::Point> initialPhiContour;
+        for (cv::Point &point : this->cytoBoundary) {
+            cv::Point newPoint = cv::Point(point.x - this->boundingBox.x, point.y-this->boundingBox.y);
+            initialPhiContour.push_back(newPoint);
         }
+
+        this->phi = cv::Mat::zeros(this->boundingBox.height, this->boundingBox.width, CV_32FC1);
+        cv::drawContours(this->phi, vector<vector<cv::Point>>{initialPhiContour}, 0, 1, CV_FILLED);
+        this->phi = this->phi * -4 + 2;
 
         this->phiArea = this->getPhiArea();
         this->phiConverged = false;
+    }
+
+    cv::Mat Cell::getPhi(cv::Rect bb) {
+        int top = this->boundingBox.y - bb.y;
+        int bottom = bb.height - this->boundingBox.height - top;
+        int left = this->boundingBox.x - bb.x;
+        int right = bb.width - this->boundingBox.width - left;
+        cv::Mat x;
+        cv::copyMakeBorder(this->phi, x, top, bottom, left, right, cv::BORDER_CONSTANT, 2);
+        return x;
+    }
+
+    cv::Mat Cell::getPhi() {
+        return getPhi(this->boundingBoxWithNeighbors);
+    }
+
+    void Cell::setPhi(cv::Mat phi) {
+        int top = this->boundingBox.y - this->boundingBoxWithNeighbors.y;
+        int left = this->boundingBox.x - boundingBox.x;
+
+        cv::Rect roi(left, top, this->boundingBox.width, this->boundingBox.height);
+        phi = phi.clone();
+        this->phi = phi(roi);
     }
 
 
@@ -135,25 +156,21 @@ namespace segment {
 
 
     cv::Point Cell::calcGeometricCenter() {
+        this->generateMaskFromBoundary();
         cv::Moments m = cv::moments(this->cytoMask, true);
+        this->cytoMask.release();
         cv::Point p(m.m10 / m.m00, m.m01 / m.m00);
         this->geometricCenter = p;
         return p;
     }
 
     cv::Mat Cell::calcShapePrior() {
-        cv::Mat shapePrior;
-        this->phi.convertTo(shapePrior, CV_8UC1, 255);
-        shapePrior = 1 - shapePrior;
+        this->calcGeometricCenter();
 
-        vector<vector<cv::Point>> contours;
-
-        cv::findContours(shapePrior, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-
-        shapePrior = cv::Mat::ones(this->phi.rows, this->phi.cols, CV_32FC1);
+        cv::Mat shapePrior = cv::Mat::ones(this->clump->boundingRect.height, this->clump->boundingRect.width, CV_32FC1);
         for (int i = 0; i < shapePrior.rows; i++) {
             for (int j = 0; j < shapePrior.cols; j++) { //Assumes a single channel matrix
-                if (cv::pointPolygonTest(contours[0], cv::Point(j, i), false) >= 0) {
+                if (cv::pointPolygonTest(this->cytoBoundary, cv::Point(j, i), false) >= 0) {
                     float dist = cv::norm(cv::Point(j, i) - this->geometricCenter) / (this->calcMaxRadius());
                     shapePrior.at<float>(i, j) = (-2.0 / (1.0 + exp(-1 * 5 * dist)) + 2.0);
                 } else if (cv::pointPolygonTest(clump->offsetContour, cv::Point(j, i), false) > 0)

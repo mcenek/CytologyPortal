@@ -152,6 +152,7 @@ namespace segment {
 
             }
 
+
             // Run the level set algorithm
             startOverlappingCellSegmentationThread(image, clump, clumpIdx);
         };

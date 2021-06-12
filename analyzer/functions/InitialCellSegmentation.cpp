@@ -361,6 +361,53 @@ namespace segment {
         image->log("Finishing initial cell segmentation for clump %d\n", clumpIdx);
     }
 
+    void saveCellNeighbors(json &cellNeighbors, Image *image, Clump *clump, int clumpIdx) {
+
+        map<Cell *, int> cellToIdx;
+
+        for (int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
+            Cell *cell = &(clump->cells[cellIdx]);
+            cellToIdx[cell] = cellIdx;
+        }
+
+        for (int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
+            Cell *cell = &(clump->cells[cellIdx]);
+            json neighbors;
+            for (Cell *neighbor : cell->neighbors) {
+                int neighborIdx = cellToIdx[neighbor];
+                neighbors.push_back(neighborIdx);
+            }
+            cellNeighbors[clumpIdx][cellIdx] = neighbors;
+        }
+
+
+
+
+
+        if (clumpIdx % 100 == 0 || clump->cells.size() > 5000) {
+            image->writeJSON("initialCellBoundaries", cellNeighbors);
+        }
+    }
+
+    void loadCellNeighbors(json &cellNeighbors, Image *image, vector<Clump> *clumps) {
+        cellNeighbors = image->loadJSON("cellNeighbors");
+        for (int clumpIdx = 0; clumpIdx < cellNeighbors.size(); clumpIdx++) {
+            Clump *clump = &(*clumps)[clumpIdx];
+            json jsonClumpCellNeighbors = cellNeighbors[clumpIdx];
+            if (jsonClumpCellNeighbors == nullptr) continue;
+            int jsonNumberCells = cellNeighbors[clumpIdx].size();
+            for (int cellIdx = 0; cellIdx < jsonNumberCells; cellIdx++) {
+                Cell *cell = &clump->cells[cellIdx];
+                json jsonCellNeighbors = cellNeighbors[clumpIdx][cellIdx];
+                if (jsonCellNeighbors == nullptr) break;
+                for (int neighborIdx : jsonCellNeighbors) {
+                    Cell *neighbor = &clump->cells[neighborIdx];
+                    cell->neighbors.push_back(neighbor);
+                }
+            }
+
+        }
+    }
 
     void saveInitialCellBoundaries(json &initialCellBoundaries, Image *image, Clump *clump, int clumpIdx) {
         for (int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
@@ -426,8 +473,10 @@ namespace segment {
         cv::RNG rng(12345);
 
         json initialCellBoundaries;
+        json cellNeighbors;
 
         loadInitialCellBoundaries(initialCellBoundaries, image, clumps);
+        loadCellNeighbors(cellNeighbors, image, clumps);
 
         function<void(Clump *, int)> threadFunction = [&image, &debug, &rng, &outimg](Clump *clump, int clumpIdx) {
             if (clump->initCytoBoundariesLoaded) {
@@ -459,9 +508,10 @@ namespace segment {
             }
         };
 
-        function<void(Clump *, int)> threadDoneFunction = [&initialCellBoundaries, &image](Clump *clump, int clumpIdx) {
+        function<void(Clump *, int)> threadDoneFunction = [&initialCellBoundaries, &cellNeighbors, &image](Clump *clump, int clumpIdx) {
             if (!clump->initCytoBoundariesLoaded) {
                 saveInitialCellBoundaries(initialCellBoundaries, image, clump, clumpIdx);
+                saveCellNeighbors(cellNeighbors, image, clump, clumpIdx);
             }
         };
 
@@ -469,6 +519,7 @@ namespace segment {
         ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 
         image->writeJSON("initialCellBoundaries", initialCellBoundaries);
+        image->writeJSON("cellNeighbors", cellNeighbors);
 
         return outimg;
     }

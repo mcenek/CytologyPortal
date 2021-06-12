@@ -38,6 +38,7 @@ namespace segment {
         cv::Point computeNucleusCenter();
         void generateBoundaryFromMask();
         void generateMaskFromBoundary();
+        cv::Rect findBoundingBox();
         cv::Rect findBoundingBoxWithNeighbors();
         void initializePhi();
         cv::Mat getPhi(cv::Rect boundingBox);

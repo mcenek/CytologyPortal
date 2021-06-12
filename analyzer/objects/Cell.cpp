@@ -70,7 +70,6 @@ namespace segment {
             cv::Rect neighborBoundingBox = cv::boundingRect(neighbor->cytoBoundary);
             boundingBox = boundingBox | neighborBoundingBox;
         }
-        int padding = 10;
 
         return boundingBox;
     }
@@ -81,7 +80,7 @@ namespace segment {
 
         vector<cv::Point> initialPhiContour;
         for (cv::Point &point : this->cytoBoundary) {
-            cv::Point newPoint = cv::Point(point.x - this->boundingBox.x, point.y-this->boundingBox.y);
+            cv::Point newPoint = cv::Point(point.x - this->boundingBox.x, point.y - this->boundingBox.y);
             initialPhiContour.push_back(newPoint);
         }
 
@@ -99,6 +98,13 @@ namespace segment {
         int left = this->boundingBox.x - bb.x;
         int right = bb.width - this->boundingBox.width - left;
         cv::Mat x;
+
+        int padding = 10;
+        top += padding;
+        bottom += padding;
+        left += padding;
+        right += padding;
+
         cv::copyMakeBorder(this->phi, x, top, bottom, left, right, cv::BORDER_CONSTANT, 2);
         return x;
     }
@@ -109,7 +115,11 @@ namespace segment {
 
     void Cell::setPhi(cv::Mat phi) {
         int top = this->boundingBox.y - this->boundingBoxWithNeighbors.y;
-        int left = this->boundingBox.x - boundingBox.x;
+        int left = this->boundingBox.x - this->boundingBoxWithNeighbors.x;
+
+        int padding = 10;
+        top += padding;
+        left += padding;
 
         cv::Rect roi(left, top, this->boundingBox.width, this->boundingBox.height);
         phi = phi.clone();
@@ -133,9 +143,9 @@ namespace segment {
     }
 
     vector<cv::Point> Cell::getPhiContour() {
-        cv::Rect cropRect(10, 10, this->clump->boundingRect.width, this->clump->boundingRect.height);
+        //cv::Rect cropRect(10, 10, this->clump->boundingRect.width, this->clump->boundingRect.height);
         cv::Mat temp = this->phi.clone();
-        temp = temp(cropRect);
+        //temp = temp(cropRect);
         cv::threshold(temp, temp, 0, 1, cv::THRESH_BINARY_INV);
         temp.convertTo(temp, CV_8UC1, 255);
         vector<vector<cv::Point>> contours;
@@ -150,8 +160,14 @@ namespace segment {
                 phiContour = contour;
             }
         }
+        vector<cv::Point> actualPhiContour;
+        for (cv::Point &point : phiContour) {
+            cv::Point newPoint = cv::Point(point.x + this->boundingBox.x, point.y + this->boundingBox.y);
+            actualPhiContour.push_back(newPoint);
+        }
 
-        return phiContour;
+
+        return actualPhiContour;
     }
 
 

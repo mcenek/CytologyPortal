@@ -9,16 +9,16 @@ namespace segment {
     namespace drlse {
 
         void updatePhi(Cell *cellI, Clump *clump, double dt, double epsilon, double mu, double kappa, double chi) {
-
             cv::Rect boundingBoxWithNeighbors = cellI->boundingBoxWithNeighbors;
+            boundingBoxWithNeighbors.width += 2 * 10;
+            boundingBoxWithNeighbors.height += 2 * 10;
+
             cv::Mat edgeEnforcer = clump->edgeEnforcer.clone();
             edgeEnforcer = edgeEnforcer(boundingBoxWithNeighbors);
 
             cv::Mat clumpPrior = clump->clumpPrior.clone();
             clumpPrior = clumpPrior(boundingBoxWithNeighbors);
-
             cv::Mat phi = cellI->getPhi();
-
             vector <cv::Mat> gradient = calcGradient(phi);
             cv::Mat regularizer = calcSignedDistanceReg(phi);
             cv::Mat dirac = calcDiracDelta(phi, epsilon);
@@ -35,7 +35,7 @@ namespace segment {
         }
 
         cv::Mat calcAllBinaryEnergy(Cell *cellI, cv::Mat edgeEnforcer, cv::Mat clumpPrior, cv::Mat phiI, cv::Mat dirac) {
-            cv::Mat binaryEnergy = cv::Mat::zeros(cellI->phi.rows, cellI->phi.cols, CV_32FC1);
+            cv::Mat binaryEnergy = cv::Mat::zeros(phiI.rows, phiI.cols, CV_32FC1);
             for (unsigned int cellIdxJ = 0; cellIdxJ < cellI->neighbors.size(); cellIdxJ++) {
                 Cell *cellJ = cellI->neighbors[cellIdxJ];
 
@@ -46,10 +46,7 @@ namespace segment {
                 cv::Rect boundingBoxWithNeighbors = cellI->boundingBoxWithNeighbors;
                 cv::Mat phiJ = cellJ->getPhi(boundingBoxWithNeighbors);
 
-                if (hasOverlap(phiI, phiJ)) {
-                    binaryEnergy += calcBinaryEnergy(phiJ, edgeEnforcer, clumpPrior, dirac);
-
-                }
+                binaryEnergy += calcBinaryEnergy(phiJ, edgeEnforcer, clumpPrior, dirac);
             }
             return binaryEnergy;
         }

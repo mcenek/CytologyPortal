@@ -9,16 +9,18 @@ namespace segment {
     namespace drlse {
 
         void updatePhi(Cell *cellI, Clump *clump, double dt, double epsilon, double mu, double kappa, double chi) {
+            cv::Mat phi = cellI->getPhi();
+
             cv::Rect boundingBoxWithNeighbors = cellI->boundingBoxWithNeighbors;
-            boundingBoxWithNeighbors.width += 2 * 10;
-            boundingBoxWithNeighbors.height += 2 * 10;
+            boundingBoxWithNeighbors.width = phi.cols;
+            boundingBoxWithNeighbors.height = phi.rows;
 
             cv::Mat edgeEnforcer = clump->edgeEnforcer.clone();
             edgeEnforcer = edgeEnforcer(boundingBoxWithNeighbors);
 
             cv::Mat clumpPrior = clump->clumpPrior.clone();
             clumpPrior = clumpPrior(boundingBoxWithNeighbors);
-            cv::Mat phi = cellI->getPhi();
+
             vector <cv::Mat> gradient = calcGradient(phi);
             cv::Mat regularizer = calcSignedDistanceReg(phi);
             cv::Mat dirac = calcDiracDelta(phi, epsilon);

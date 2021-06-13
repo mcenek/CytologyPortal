@@ -85,7 +85,7 @@ namespace segment {
             finalCellBoundaries[clumpIdx][cellIdx] = finalCellBoundary;
         }
 
-        if (clumpIdx % 100 == 0) {
+        if (clumpIdx % 100 == 0 || clump->cells.size() > 5000) {
             image->writeJSON("finalCellBoundaries", finalCellBoundaries);
         }
     }
@@ -145,12 +145,14 @@ namespace segment {
             clump->edgeEnforcer = drlse::calcEdgeEnforcer(padMatrix(clump->extract(), cv::Scalar(255, 255, 255)));
             clump->clumpPrior = padMatrix(clump->calcClumpPrior(), cv::Scalar(255, 255, 255));
 
+            /*
             for (unsigned int cellIdxI = 0; cellIdxI < clump->cells.size(); cellIdxI++) {
                 Cell *cellI = &clump->cells[cellIdxI];
-                cellI->initializePhi();
+                //cellI->initializePhi();
                 //cellI->phi = padMatrix(cellI->phi, 2);
 
             }
+             */
 
 
             // Run the level set algorithm

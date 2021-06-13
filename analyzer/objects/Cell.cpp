@@ -181,18 +181,27 @@ namespace segment {
     }
 
     cv::Mat Cell::calcShapePrior() {
+        this->initializePhi();
         this->calcGeometricCenter();
+        cv::Point geometricCenter(this->geometricCenter.x - this->boundingBox.x, this->geometricCenter.y - this->boundingBox.y);
 
-        cv::Mat shapePrior = cv::Mat::ones(this->clump->boundingRect.height, this->clump->boundingRect.width, CV_32FC1);
+        cv::Mat shapePrior = this->phi.clone();
+
+        shapePrior = -shapePrior;
+
+        float maxRadius = this->calcMaxRadius();
         for (int i = 0; i < shapePrior.rows; i++) {
             for (int j = 0; j < shapePrior.cols; j++) { //Assumes a single channel matrix
-                if (cv::pointPolygonTest(this->cytoBoundary, cv::Point(j, i), false) >= 0) {
-                    float dist = cv::norm(cv::Point(j, i) - this->geometricCenter) / (this->calcMaxRadius());
-                    shapePrior.at<float>(i, j) = (-2.0 / (1.0 + exp(-1 * 5 * dist)) + 2.0);
-                } else if (cv::pointPolygonTest(clump->offsetContour, cv::Point(j, i), false) > 0)
-                    shapePrior.at<float>(i, j) = 0.0;
+                cv::Point point(j, i);
+                float currentValue = shapePrior.at<float>(point);
+                if (currentValue == 2) {
+                    float dist = cv::norm(point - geometricCenter) / maxRadius;
+                    shapePrior.at<float>(point) = (-2.0 / (1.0 + exp(-1 * 5 * dist)));
+                }
             }
         }
+        shapePrior += 2;
+
         return shapePrior;
     }
 

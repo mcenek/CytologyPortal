@@ -385,7 +385,7 @@ namespace segment {
 
 
         if (clumpIdx % 100 == 0 || clump->cells.size() > 5000) {
-            image->writeJSON("initialCellBoundaries", cellNeighbors);
+            image->writeJSON("cellNeighbors", cellNeighbors);
         }
     }
 

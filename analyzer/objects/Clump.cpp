@@ -188,11 +188,22 @@ namespace segment {
      */
 
     cv::Mat Clump::calcClumpPrior() {
+        this->clumpPrior = cv::Mat::ones(this->boundingRect.height, this->boundingRect.width, CV_32FC1);
+        cv::drawContours(this->clumpPrior, vector<vector<cv::Point>>{this->offsetContour}, 0, 0, CV_FILLED);
         for (unsigned int cellIdx = 0; cellIdx < this->cells.size(); cellIdx++) {
             Cell *cell = &this->cells[cellIdx];
             cv::Mat shapePrior = cell->calcShapePrior();
-            if (this->clumpPrior.empty()) this->clumpPrior = shapePrior;
-            else cv::max(this->clumpPrior, shapePrior, this->clumpPrior);
+            for (int i = 0; i < shapePrior.rows; i++) {
+                for (int j = 0; j < shapePrior.cols; j++) { //Assumes a single channel matrix
+                    cv::Point shapePriorPoint(j, i);
+                    cv::Point clumpPriorPoint(cell->boundingBox.x + j, cell->boundingBox.y + i);
+                    float shapePriorValue = shapePrior.at<float>(shapePriorPoint);
+                    float clumpPriorValue = this->clumpPrior.at<float>(clumpPriorPoint);
+                    if (shapePriorValue > clumpPriorValue) {
+                        this->clumpPrior.at<float>(clumpPriorPoint) = shapePriorValue;
+                    }
+                }
+            }
             //cv::imshow("Shape prior", cell->shapePrior);
             //cv::waitKey(0);
         }

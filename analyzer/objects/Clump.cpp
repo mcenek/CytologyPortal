@@ -194,7 +194,7 @@ namespace segment {
             Cell *cell = &this->cells[cellIdx];
             cv::Mat shapePrior = cell->calcShapePrior();
             for (int i = 0; i < shapePrior.rows; i++) {
-                for (int j = 0; j < shapePrior.cols; j++) { //Assumes a single channel matrix
+                for (int j = 0; j < shapePrior.cols; j++) {
                     cv::Point shapePriorPoint(j, i);
                     cv::Point clumpPriorPoint(cell->boundingBox.x + j, cell->boundingBox.y + i);
                     float shapePriorValue = shapePrior.at<float>(shapePriorPoint);

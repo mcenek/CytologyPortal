@@ -85,7 +85,7 @@ namespace segment {
             finalCellBoundaries[clumpIdx][cellIdx] = finalCellBoundary;
         }
 
-        if (clumpIdx % 100 == 0 || clump->cells.size() > 5000) {
+        if (clumpIdx % 1 == 0 || clump->cells.size() > 3000) {
             image->writeJSON("finalCellBoundaries", finalCellBoundaries);
         }
     }
@@ -165,7 +165,7 @@ namespace segment {
             }
         };
 
-        int maxThreads = 8;
+        int maxThreads = 16;
         // Spawns threads that run the thread function for each clump
         ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 

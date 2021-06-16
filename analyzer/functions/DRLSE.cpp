@@ -9,37 +9,51 @@ namespace segment {
     namespace drlse {
 
         void updatePhi(Cell *cellI, Clump *clump, double dt, double epsilon, double mu, double kappa, double chi) {
-            vector <cv::Mat> gradient = calcGradient(cellI->phi);
-            cv::Mat regularizer = calcSignedDistanceReg(cellI->phi);
-            cv::Mat dirac = calcDiracDelta(cellI->phi, epsilon);
-            cv::Mat gac = calcGeodesicTerm(dirac, gradient, clump->edgeEnforcer, clump->clumpPrior);
-            cv::Mat binaryEnergy = calcAllBinaryEnergy(cellI, clump, dirac);
+            cv::Mat phi = cellI->getPhi();
 
-            cellI->phi += dt * (
+            cv::Rect boundingBoxWithNeighbors = cellI->boundingBoxWithNeighbors;
+            boundingBoxWithNeighbors.width = phi.cols;
+            boundingBoxWithNeighbors.height = phi.rows;
+
+            cv::Mat edgeEnforcer = clump->edgeEnforcer.clone();
+            edgeEnforcer = edgeEnforcer(boundingBoxWithNeighbors);
+
+            cv::Mat clumpPrior = clump->clumpPrior.clone();
+            clumpPrior = clumpPrior(boundingBoxWithNeighbors);
+
+            vector <cv::Mat> gradient = calcGradient(phi);
+            cv::Mat regularizer = calcSignedDistanceReg(phi);
+            cv::Mat dirac = calcDiracDelta(phi, epsilon);
+            cv::Mat gac = calcGeodesicTerm(dirac, gradient, edgeEnforcer, clumpPrior);
+            cv::Mat binaryEnergy = calcAllBinaryEnergy(cellI, edgeEnforcer, clumpPrior, phi, dirac);
+
+            phi += dt * (
                     mu * regularizer +
                     kappa * gac +
                     chi * binaryEnergy
             );
+
+            cellI->setPhi(phi);
         }
 
-        cv::Mat calcAllBinaryEnergy(Cell *cellI, Clump *clump, cv::Mat dirac) {
-            cv::Mat binaryEnergy = cv::Mat::zeros(cellI->phi.rows, cellI->phi.cols, CV_32FC1);
-            for (unsigned int cellIdxJ = 0; cellIdxJ < clump->cells.size(); cellIdxJ++) {
-                Cell *cellJ = &clump->cells[cellIdxJ];
+        cv::Mat calcAllBinaryEnergy(Cell *cellI, cv::Mat edgeEnforcer, cv::Mat clumpPrior, cv::Mat phiI, cv::Mat dirac) {
+            cv::Mat binaryEnergy = cv::Mat::zeros(phiI.rows, phiI.cols, CV_32FC1);
+            for (unsigned int cellIdxJ = 0; cellIdxJ < cellI->neighbors.size(); cellIdxJ++) {
+                Cell *cellJ = cellI->neighbors[cellIdxJ];
 
                 if (cellI == cellJ) {
                     continue;
                 }
 
-                if (hasOverlap(cellI->phi, cellJ->phi)) {
-                    binaryEnergy += calcBinaryEnergy(cellJ->phi, clump->clumpPrior, clump->edgeEnforcer, dirac);
+                cv::Rect boundingBoxWithNeighbors = cellI->boundingBoxWithNeighbors;
+                cv::Mat phiJ = cellJ->getPhi(boundingBoxWithNeighbors);
 
-                }
+                binaryEnergy += calcBinaryEnergy(phiJ, edgeEnforcer, clumpPrior, dirac);
             }
             return binaryEnergy;
         }
 
-        cv::Mat calcBinaryEnergy(cv::Mat mat, cv::Mat clumpPrior, cv::Mat edgeEnforcer, cv::Mat dirac) {
+        cv::Mat calcBinaryEnergy(cv::Mat mat, cv::Mat edgeEnforcer, cv::Mat clumpPrior, cv::Mat dirac) {
             cv::Mat overAreaTerm;
             cv::Mat heaviside = calcHeaviside(mat);
             overAreaTerm = clumpPrior.mul(edgeEnforcer);
@@ -132,6 +146,7 @@ namespace segment {
                     else row[j] = 0;
                 }
             }
+
             return heaviside;
         }
 

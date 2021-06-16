@@ -8,9 +8,9 @@ namespace segment {
 
         void updatePhi(Cell *cellI, Clump *clump, double dt, double epsilon, double mu, double kappa, double chi);
 
-        cv::Mat calcAllBinaryEnergy(Cell *cellI, Clump *clump, cv::Mat dirac);
+        cv::Mat calcAllBinaryEnergy(Cell *cellI, cv::Mat edgeEnforcer, cv::Mat clumpPrior, cv::Mat phiI, cv::Mat dirac);
 
-        cv::Mat calcBinaryEnergy(cv::Mat mat, cv::Mat clumpPrior, cv::Mat edgeEnforcer, cv::Mat dirac);
+        cv::Mat calcBinaryEnergy(cv::Mat mat, cv::Mat edgeEnforcer, cv::Mat clumpPrior, cv::Mat dirac);
 
         vector<cv::Mat> calcCurvatureXY(vector<cv::Mat> gradient);
 

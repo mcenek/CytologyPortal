@@ -63,6 +63,7 @@ namespace segment {
         vector<cv::Mat> masks;
         for (vector<cv::Point> contour : contours) {
             cv::Mat mask = cv::Mat::zeros(rows, cols, CV_8UC1);
+
             cv::drawContours(mask, vector<vector<cv::Point>>{contour}, 0, 255, CV_FILLED);
             masks.push_back(mask);
         }

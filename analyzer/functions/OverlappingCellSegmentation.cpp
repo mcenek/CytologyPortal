@@ -18,6 +18,7 @@ namespace segment {
     bool clumpHasSingleCell(Clump *clump) {
         if (clump->cells.size() == 1) {
             Cell *cellI = &clump->cells[0];
+            cellI->finalContour = cellI->getPhiContour();
             // Cell is converged since its boundary is the clump boundary
             cellI->phiConverged = true;
             return true;
@@ -45,7 +46,7 @@ namespace segment {
         if (clumpHasSingleCell(clump)) cellsConverged = clump->cells.size();
 
         int i = 0;
-        while (cellsConverged < clump->cells.size() && i < 1000) {
+        while (cellsConverged < clump->cells.size()) {
             for (unsigned int cellIdxI = 0; cellIdxI < clump->cells.size(); cellIdxI++) {
                 Cell *cellI = &clump->cells[cellIdxI];
 
@@ -53,12 +54,13 @@ namespace segment {
                     continue;
                 }
 
+
                 drlse::updatePhi(cellI, clump, dt, epsilon, mu, kappa, chi);
 
                 cout << "LSF Iteration " << i << ": Clump " << clumpIdx << ", Cell " << cellIdxI << endl;
 
                 if (i != 0 && i % 50 == 0) {
-                    if (isConverged(cellI)) {
+                    if (isConverged(cellI) || i >= 1000) {
                         cellsConverged++;
                         cellI->finalContour = cellI->getPhiContour();
                         cout << "converged" << endl;
@@ -67,6 +69,7 @@ namespace segment {
             }
             i++;
         }
+
         clump->edgeEnforcer.release();
         clump->clumpPrior.release();
     }
@@ -82,7 +85,7 @@ namespace segment {
             finalCellBoundaries[clumpIdx][cellIdx] = finalCellBoundary;
         }
 
-        if (clumpIdx % 100 == 0) {
+        if (clumpIdx % 1 == 0 || clump->cells.size() > 3000) {
             image->writeJSON("finalCellBoundaries", finalCellBoundaries);
         }
     }
@@ -136,15 +139,21 @@ namespace segment {
                 return;
             }
 
-            image->log("Calculating clump %u's edge enforcer and clump prior", clumpIdx);
+            image->log("Calculating clump %u's edge enforcer and clump prior\n", clumpIdx);
             // Pad the edge enforcer, clump prior and the cells' phi so that the level set algorithm
             // will not distort any cells that happen to be at the boundary of the image
             clump->edgeEnforcer = drlse::calcEdgeEnforcer(padMatrix(clump->extract(), cv::Scalar(255, 255, 255)));
             clump->clumpPrior = padMatrix(clump->calcClumpPrior(), cv::Scalar(255, 255, 255));
+
+            /*
             for (unsigned int cellIdxI = 0; cellIdxI < clump->cells.size(); cellIdxI++) {
                 Cell *cellI = &clump->cells[cellIdxI];
-                cellI->phi = padMatrix(cellI->phi, 2);
+                //cellI->initializePhi();
+                //cellI->phi = padMatrix(cellI->phi, 2);
+
             }
+             */
+
 
             // Run the level set algorithm
             startOverlappingCellSegmentationThread(image, clump, clumpIdx);
@@ -156,7 +165,7 @@ namespace segment {
             }
         };
 
-        int maxThreads = 8;
+        int maxThreads = 16;
         // Spawns threads that run the thread function for each clump
         ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 

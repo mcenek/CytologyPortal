@@ -80,12 +80,11 @@ namespace segment {
     vector<SubImage> splitMat(cv::Mat *mat, int numberSubMatX, int numberSubMatY, double paddingWidth, double paddingHeight) {
         int subMatWidth = ceil(mat->cols / (double) numberSubMatX);
         int subMatHeight = ceil(mat->rows / (double) numberSubMatY);
-
+        paddingWidth = ceil(paddingWidth * subMatWidth);
+        paddingHeight = ceil(paddingHeight * subMatHeight);
         vector<SubImage> subImages;
         for (int i = 0; i < numberSubMatX; i++) {
             for (int j = 0; j < numberSubMatY; j++) {
-                paddingWidth = ceil(paddingWidth * subMatWidth);
-                paddingHeight = ceil(paddingHeight * subMatHeight);
                 SubImage subImage = SubImage(mat, i, j, subMatWidth, subMatHeight, paddingWidth, paddingHeight);
                 subImages.push_back(subImage);
             }

@@ -9,7 +9,7 @@ namespace segment {
         // If less than 50 pixels have changed, then it is considered converged
         if (abs(cellI->phiArea - newPhiArea) < 50) {
             cellI->phiConverged = true;
-
+            cout << newPhiArea << endl;
         }
         cellI->phiArea = newPhiArea;
         return cellI->phiConverged;
@@ -19,6 +19,7 @@ namespace segment {
         if (clump->cells.size() == 1) {
             Cell *cellI = &clump->cells[0];
             cellI->finalContour = cellI->getPhiContour();
+            cellI->phi.release();
             // Cell is converged since its boundary is the clump boundary
             cellI->phiConverged = true;
             return true;
@@ -63,6 +64,7 @@ namespace segment {
                     if (isConverged(cellI) || i >= 1000) {
                         cellsConverged++;
                         cellI->finalContour = cellI->getPhiContour();
+                        cellI->phi.release();
                         cout << "converged" << endl;
                     }
                 }
@@ -75,7 +77,7 @@ namespace segment {
     }
 
 
-    void saveFinalCellBoundaries(json &finalCellBoundaries, Image *image, Clump *clump, int clumpIdx) {
+    void saveFinalCellBoundaries(json &finalCellBoundaries, json &nucleiCytoRatios, Image *image, Clump *clump, int clumpIdx) {
         for (int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
             Cell *cell = &(clump->cells[cellIdx]);
             json finalCellBoundary;
@@ -83,10 +85,12 @@ namespace segment {
                 finalCellBoundary.push_back({point.x, point.y});
             }
             finalCellBoundaries[clumpIdx][cellIdx] = finalCellBoundary;
+            nucleiCytoRatios[clumpIdx][cellIdx] = cell->nucleusArea / cell->phiArea;
         }
 
         if (clumpIdx % 1 == 0 || clump->cells.size() > 3000) {
             image->writeJSON("finalCellBoundaries", finalCellBoundaries);
+            image->writeJSON("nucleiCytoRatios", nucleiCytoRatios);
         }
     }
 
@@ -110,6 +114,7 @@ namespace segment {
                 }
                 Cell *cell = &clump->cells[cellIdx];
                 cell->finalContour = contour;
+                cell->phiArea = cv::contourArea(contour);
                 // Clump cyto boundaries are fully loaded
                 if (cellIdx == jsonNumberCells - 1) {
                     clump->finalCellContoursLoaded = true;
@@ -128,6 +133,7 @@ namespace segment {
         vector<Clump> *clumps = &image->clumps;
 
         json finalCellBoundaries;
+        json nucleiCytoRatios;
 
         // Load final cell boundaries from finalCellBoundaries.json if it exists
         loadFinalCellBoundaries(finalCellBoundaries, image, clumps);
@@ -159,9 +165,9 @@ namespace segment {
             startOverlappingCellSegmentationThread(image, clump, clumpIdx);
         };
 
-        function<void(Clump *, int)> threadDoneFunction = [&finalCellBoundaries, &image](Clump *clump, int clumpIdx) {
+        function<void(Clump *, int)> threadDoneFunction = [&finalCellBoundaries, &nucleiCytoRatios, &image](Clump *clump, int clumpIdx) {
             if (!clump->finalCellContoursLoaded) {
-                saveFinalCellBoundaries(finalCellBoundaries, image, clump, clumpIdx);
+                saveFinalCellBoundaries(finalCellBoundaries, nucleiCytoRatios, image, clump, clumpIdx);
             }
         };
 

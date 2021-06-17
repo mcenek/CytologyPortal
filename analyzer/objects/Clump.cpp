@@ -138,6 +138,7 @@ namespace segment {
             Cell cell;
             cell.clump = this;
             cell.nucleusBoundary = vector<cv::Point>(*boundary);
+            cell.nucleusArea = cv::contourArea(cell.nucleusBoundary);
             cell.computeNucleusCenter();
             //cell.generateColor(); //TODO: Not strictly guarenteed to be unique.. Could lead to segmentation errors as currently implemented
 

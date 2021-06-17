@@ -168,10 +168,12 @@ namespace segment {
                     b.at<float>(i, j) = int(value > 1);
                     //c = sin(2*pi*s)
                     c.at<float>(i, j) = sin(2 * M_PI * value);
+
                 }
             }
 
             cv::Mat d, e;
+
             //d = a.*sin(2*pi*s)
             cv::multiply(a, c, d);
             //e = b.*(s-1)

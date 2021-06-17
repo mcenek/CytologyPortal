@@ -8,6 +8,7 @@
 #include "functions/NucleiDetection.h"
 #include "functions/OverlappingCellSegmentation.h"
 #include "functions/Preprocessing.h"
+#include "functions/Export.h"
 
 extern "C" {
 #include "vl/quickshift.h"
@@ -172,6 +173,8 @@ namespace segment {
         image.writeImage("cell_boundaries.png", outimg);
         outimg.release();
 
+
+        exportResults(&image);
 
         start = chrono::high_resolution_clock::now();
         if (debug) image.log("Beginning segmentation evaluation...\n");

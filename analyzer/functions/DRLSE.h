@@ -21,13 +21,10 @@ namespace segment {
 
         cv::Mat calcDiracDelta(cv::Mat mat, double sigma);
 
-        cv::Mat calcHeaviside(cv::Mat mat);
-
-        //Applies the normalized derivative of the potential function ......
-        cv::Mat calcPotential(cv::Mat gradientMagnitude);
+        cv::Mat calcHeavisideInv(cv::Mat mat);
 
         //A unary LSF energy term, following the equation - μdiv(dp(|∇φi|)∇φi)
-        cv::Mat calcSignedDistanceReg(cv::Mat mat);
+        cv::Mat calcSignedDistanceReg(cv::Mat mat, vector<cv::Mat> gradient);
 
         cv::Mat conv2( const cv::Mat& input, const cv::Mat& kernel, const char* shape);
 

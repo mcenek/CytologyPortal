@@ -19,7 +19,6 @@ namespace segment {
         if (clump->cells.size() == 1) {
             Cell *cellI = &clump->cells[0];
             cellI->finalContour = cellI->getPhiContour();
-            cellI->phi.release();
             // Cell is converged since its boundary is the clump boundary
             cellI->phiConverged = true;
             return true;
@@ -64,7 +63,6 @@ namespace segment {
                     if (isConverged(cellI) || i >= 1000) {
                         cellsConverged++;
                         cellI->finalContour = cellI->getPhiContour();
-                        cellI->phi.release();
                         cout << "converged" << endl;
                     }
                 }

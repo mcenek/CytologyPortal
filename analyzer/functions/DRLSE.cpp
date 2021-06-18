@@ -22,8 +22,10 @@ namespace segment {
             clumpPrior = clumpPrior(boundingBoxWithNeighbors);
 
             vector <cv::Mat> gradient = calcGradient(phi);
-            cv::Mat regularizer = calcSignedDistanceReg(phi);
+            cv::Mat regularizer = calcSignedDistanceReg(phi, gradient);
+
             cv::Mat dirac = calcDiracDelta(phi, epsilon);
+
             cv::Mat gac = calcGeodesicTerm(dirac, gradient, edgeEnforcer, clumpPrior);
             cv::Mat binaryEnergy = calcAllBinaryEnergy(cellI, edgeEnforcer, clumpPrior, phi, dirac);
 
@@ -47,7 +49,6 @@ namespace segment {
 
                 cv::Rect boundingBoxWithNeighbors = cellI->boundingBoxWithNeighbors;
                 cv::Mat phiJ = cellJ->getPhi(boundingBoxWithNeighbors);
-
                 binaryEnergy += calcBinaryEnergy(phiJ, edgeEnforcer, clumpPrior, dirac);
             }
             return binaryEnergy;
@@ -55,7 +56,7 @@ namespace segment {
 
         cv::Mat calcBinaryEnergy(cv::Mat mat, cv::Mat edgeEnforcer, cv::Mat clumpPrior, cv::Mat dirac) {
             cv::Mat overAreaTerm;
-            cv::Mat heaviside = calcHeaviside(mat);
+            cv::Mat heaviside = calcHeavisideInv(mat);
             overAreaTerm = clumpPrior.mul(edgeEnforcer);
             overAreaTerm = overAreaTerm.mul(dirac);
             overAreaTerm = overAreaTerm.mul(heaviside);
@@ -74,24 +75,20 @@ namespace segment {
         }
 
         cv::Mat calcDiracDelta(cv::Mat mat, double sigma) {
-            int rows = mat.rows;
-            int cols = mat.cols;
-
-            cv::Mat f = cv::Mat(rows, cols, CV_32FC1);
-            cv::Mat b = cv::Mat(rows, cols, CV_32FC1);
-
-            for (int i = 0; i < rows; i++) {
-                for (int j = 0; j < cols; j++) {
-                    float value = mat.at<float>(i, j);
-                    //f=(1/2/sigma)*(1+cos(pi*x/sigma));
-                    f.at<float>(i, j) = (1.0 / 2.0 / sigma) * (1 + cos(M_PI * value / sigma));
-
-                    //(x<=sigma) & (x>=-sigma);
-                    b.at<float>(i, j) = int(value <= sigma && value >= -sigma);
+            cv::Mat diracDelta = cv::Mat(mat.rows, mat.cols, CV_32FC1);
+            for (int i = 0; i < mat.rows; i++) {
+                float *row = mat.ptr<float>(i);
+                float *diracDeltaRow = diracDelta.ptr<float>(i);
+                for (int j = 0; j < mat.cols; j++) {
+                    float value = row[j];
+                    if (value <= sigma && value >= -sigma) {
+                        diracDeltaRow[j] = (1.0 / 2.0 / sigma) * (1 + cos(M_PI * value / sigma));
+                    } else {
+                        diracDeltaRow[j] = 0;
+                    }
                 }
             }
-            cv::multiply(f, b, f);
-            return f;
+            return diracDelta;
         }
 
 
@@ -136,108 +133,53 @@ namespace segment {
             return dirac.mul(vxd.mul(Nx) + vyd.mul(Ny)) + dirac.mul(clumpPrior).mul(edgeEnforcer).mul(curvature);
         }
 
-        cv::Mat calcHeaviside(cv::Mat mat) {
-            cv::Mat heaviside = mat.clone();
-            for (int i = 0; i < heaviside.rows; i++) {
-                float *row = heaviside.ptr<float>(i);
-                for (int j = 0; j < heaviside.cols; j++) {
+        cv::Mat calcHeavisideInv(cv::Mat mat) {
+            cv::Mat heavisideInv = cv::Mat(mat.rows, mat.cols, CV_32FC1);
+            for (int i = 0; i < heavisideInv.rows; i++) {
+                float *row = mat.ptr<float>(i);
+                float *heavisideInvRow = heavisideInv.ptr<float>(i);
+                for (int j = 0; j < heavisideInv.cols; j++) {
                     float value = row[j];
-                    if (value <= 0) row[j] = 1;
-                    else row[j] = 0;
+                    if (value > 0) heavisideInvRow[j] = 0;
+                    else heavisideInvRow[j] = 1;
                 }
             }
-
-            return heaviside;
-        }
-
-        //Applies the normalized derivative of the potential function ......
-        cv::Mat calcPotential(cv::Mat gradientMagnitude) {
-            int rows = gradientMagnitude.rows;
-            int cols = gradientMagnitude.cols;
-
-            cv::Mat a = cv::Mat(rows, cols, CV_32FC1);
-            cv::Mat b = cv::Mat(rows, cols, CV_32FC1);
-            cv::Mat c = cv::Mat(rows, cols, CV_32FC1);
-
-            for (int i = 0; i < rows; i++) {
-                for (int j = 0; j < cols; j++) {
-                    float value = gradientMagnitude.at<float>(i, j);
-                    //a = (s>=0) & (s<=1)
-                    a.at<float>(i, j) = int(value >= 0 && value <= 1);
-                    //b = (s>1)
-                    b.at<float>(i, j) = int(value > 1);
-                    //c = sin(2*pi*s)
-                    c.at<float>(i, j) = sin(2 * M_PI * value);
-
-                }
-            }
-
-            cv::Mat d, e;
-
-            //d = a.*sin(2*pi*s)
-            cv::multiply(a, c, d);
-            //e = b.*(s-1)
-            cv::multiply(b, gradientMagnitude - 1, e);
-
-            //return a.*sin(2*pi*s)/(2*pi)+b.*(s-1)
-            return c / (2 * M_PI) + e;
-
+            return heavisideInv;
         }
 
         //A unary LSF energy term, following the equation - μdiv(dp(|∇φi|)∇φi)
-        cv::Mat calcSignedDistanceReg(cv::Mat mat) {
-            vector <cv::Mat> gradient = calcGradient(mat);
+        cv::Mat calcSignedDistanceReg(cv::Mat mat, vector<cv::Mat> gradient) {
             cv::Mat gradientX = getGradientX(gradient);
             cv::Mat gradientY = getGradientY(gradient);
             cv::Mat gradientMagnitude = calcMagnitude(gradientX, gradientY);
 
-            cv::Mat potential = calcPotential(gradientMagnitude);
-            int rows = gradientMagnitude.rows;
-            int cols = gradientMagnitude.cols;
+            cv::Mat potential = cv::Mat(mat.rows, mat.cols, CV_32FC1);
+            cv::Mat divX = cv::Mat(mat.rows, mat.cols, CV_32FC1);
+            cv::Mat divY = cv::Mat(mat.rows, mat.cols, CV_32FC1);
 
-            cv::Mat a = cv::Mat(rows, cols, CV_32FC1);
-            cv::Mat b = cv::Mat(rows, cols, CV_32FC1);
-            cv::Mat c = cv::Mat(rows, cols, CV_32FC1);
-            cv::Mat d = cv::Mat(rows, cols, CV_32FC1);
-
-            for (int i = 0; i < rows; i++) {
-                for (int j = 0; j < cols; j++) {
-                    float potentialValue = potential.at<float>(i, j);
-                    float gradientMagnitudeValue = gradientMagnitude.at<float>(i, j);
-
-                    //a = (ps~=0)
-                    a.at<float>(i, j) = int(potentialValue != 0);
-                    //b = (ps==0)
-                    b.at<float>(i, j) = int(potentialValue == 0);
-
-                    //c = (s~=0)
-                    c.at<float>(i, j) = int(gradientMagnitudeValue != 0);
-                    //d = (s==0)
-                    d.at<float>(i, j) = int(gradientMagnitudeValue == 0);
+            for (int i = 0; i < potential.rows; i++) {
+                float *gradientXRow = gradientX.ptr<float>(i);
+                float *gradientYRow = gradientY.ptr<float>(i);
+                float *gradMagRow = gradientMagnitude.ptr<float>(i);
+                float *potentialRow = potential.ptr<float>(i);
+                float *divXRow = divX.ptr<float>(i);
+                float *divYRow = divY.ptr<float>(i);
+                for (int j = 0; j < potential.cols; j++) {
+                    float gradientMag = gradMagRow[j];
+                    if (gradientMag >= 0 && gradientMag <= 1) {
+                        potentialRow[j] = sin(2 * M_PI * gradientMag) / (2 * M_PI);
+                    } else if (gradientMag > 1) {
+                        potentialRow[j] = gradientMag - 1;
+                    } else {
+                        potentialRow[j] = 0;
+                    }
+                    float potential = potentialRow[j];
+                    float dps = ((potential != 0) ? potential : 1) / ((gradientMag != 0) ? gradientMag : 1);
+                    divXRow[j] = dps * gradientXRow[j] - gradientXRow[j];
+                    divYRow[j] = dps * gradientYRow[j] - gradientYRow[j];
                 }
             }
-
-            //a = (ps~=0).*ps
-            cv::multiply(a, potential, a);
-            //a = (ps~=0).*ps+(ps==0)
-            a = a + b;
-
-            //c = (s~=0).*s
-            cv::multiply(c, gradientMagnitude, c);
-            //c = (s~=0).*s+(s==0)
-            c = c + d;
-
-            cv::Mat dps;
-            //dps=((ps~=0).*ps+(ps==0))./((s~=0).*s+(s==0));
-            cv::divide(a, c, dps);
-
-            //a = dps.*phi_x
-            cv::multiply(dps, gradientX, a);
-            //b = dps.*phi_y
-            cv::multiply(dps, gradientY, b);
-
-            //f = div(dps.*phi_x - phi_x, dps.*phi_y - phi_y) + 4*del2(phi);
-            return calcDivergence(a - gradientX, b - gradientY) + 4 * del2(mat);
+            return calcDivergence(divX, divY) + 4 * del2(mat);
         }
 
         cv::Mat conv2(const cv::Mat &input, const cv::Mat &kernel, const char *shape) {

@@ -19,7 +19,7 @@ namespace segment {
             cv::Mat Nx = curvatureXY[0];
             cv::Mat Ny = curvatureXY[1];
             cv::Mat curvature = calcDivergence(Nx, Ny);
-            cv::Mat regularizer = drlse::calcSignedDistanceReg(phi);
+            cv::Mat regularizer = drlse::calcSignedDistanceReg(phi, gradient);
             cv::Mat dirac = drlse::calcDiracDelta(phi, epsilon);
             cv::Mat areaTerm = dirac.mul(g);
             cv::Mat edgeTerm = dirac.mul(vx.mul(Nx) + vy.mul(Ny)) +

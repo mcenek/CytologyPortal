@@ -74,6 +74,7 @@ namespace segment {
             image.writeImage("gmmPredictions.png", outimg);
             outimg.release();
         }
+        image.gmmPredictions = gmmPredictions;
 
         end = std::chrono::duration_cast<std::chrono::microseconds>(
                 chrono::high_resolution_clock::now() - start).count() / 1000000.0;
@@ -137,6 +138,7 @@ namespace segment {
         // Estimates the initial cell boundaries of the cell by associating each point inside the
         // clump with the nearest nucleus. Then overlapping region is extrapolated with an ellipse.
         outimg = runInitialCellSegmentation(&image, threshold1, threshold2, debug);
+        image.gmmPredictions.release();
 
         // Display and save initial cell boundaries to png file
         image.writeImage("initial_cell_boundaries.png", outimg);

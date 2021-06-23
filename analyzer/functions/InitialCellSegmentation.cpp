@@ -54,7 +54,15 @@ namespace segment {
     }
 
 
-    void associateClumpBoundariesWithCell(Clump *clump, int c, bool debug) {
+    bool insideClump(Image *image, Clump *clump, cv::Point point) {
+        cv::Point pointImage(point.x + clump->boundingRect.x, point.y + clump->boundingRect.y);
+        bool insideImage = pointImage.x >= 0 && pointImage.x < image->gmmPredictions.cols &&
+                pointImage.y >= 0 && pointImage.y < image->gmmPredictions.rows;
+        return insideImage && image->gmmPredictions.at<uchar>(pointImage) > 0 &&
+            cv::pointPolygonTest(clump->offsetContour, point, false) >= 0;
+    }
+
+    void associateClumpBoundariesWithCell(Image *image, Clump *clump, int c, bool debug) {
         if (clump->cells.size() == 1) {
             Cell *cell = &clump->cells[0];
             cell->cytoMask = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
@@ -87,9 +95,7 @@ namespace segment {
                     float x = i + nucleusCenter.x;
                     float y = j + nucleusCenter.y;
                     cv::Point point = cv::Point(x, y);
-                    bool insideClump = cv::pointPolygonTest(clump->offsetContour, point, false) >= 0;
-                    bool validAssociation = testLineViability(point, clump, cell);
-                    if (insideClump && validAssociation) {
+                    if (insideClump(image, clump, point) && testLineViability(point, clump, cell)) {
                         cell->cytoAssocs.push_back(point);
                         clump->associatedCells[y][x] = cell;
                     }
@@ -103,8 +109,7 @@ namespace segment {
                 cv::Point point = cv::Point(col, row);
                 if (clump->associatedCells[row][col] != nullptr) continue;
 
-                // Check if inside clump
-                if (cv::pointPolygonTest(clump->offsetContour, point, false) >= 0) {
+                if (insideClump(image, clump, point)) {
                     Cell *associatedCell = findAssociatedCell(point, clump);
                     if (associatedCell == nullptr) continue;
                     associatedCell->cytoAssocs.push_back(point);
@@ -256,7 +261,7 @@ namespace segment {
         image->log("Beginning initial cell segmentation for clump %d, width: %d, height: %d\n", clumpIdx, clump->boundingRect.width, clump->boundingRect.height);
 
 
-        associateClumpBoundariesWithCell(clump, clumpIdx, debug);
+        associateClumpBoundariesWithCell(image, clump, clumpIdx, debug);
         image->log("Clump %d, done associate clump boundaries with cells\n", clumpIdx);
         associationsToBoundaries(clump);
         findNeighbors(clump);

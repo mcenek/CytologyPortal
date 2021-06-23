@@ -14,6 +14,7 @@ namespace segment {
     class Image {
     public:
         cv::Mat mat;
+        cv::Mat gmmPredictions;
 
         cv::Mat matPadded;
         int padding;

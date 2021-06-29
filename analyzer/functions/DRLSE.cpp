@@ -8,24 +8,31 @@ using namespace std;
 namespace segment {
     namespace drlse {
 
+        /*
+         * updatePhi evolves the level set front, phi, using the modified DRLSE algorithm
+         */
         void updatePhi(Cell *cellI, Clump *clump, double dt, double epsilon, double mu, double kappa, double chi) {
+            //getPhi returns phi that is cropped to a bounding box of phi and its neighbors + padding
             cv::Mat phi = cellI->getPhi();
 
+            //Get the bounding box of phi and its neighbors
             cv::Rect boundingBoxWithNeighbors = cellI->boundingBoxWithNeighbors;
+            //Fix dimensions to account for extra padding (from the getPhi function)
             boundingBoxWithNeighbors.width = phi.cols;
             boundingBoxWithNeighbors.height = phi.rows;
 
+            //Crop edge enforcer to a bounding box of phi and its neighbors + padding
             cv::Mat edgeEnforcer = clump->edgeEnforcer.clone();
             edgeEnforcer = edgeEnforcer(boundingBoxWithNeighbors);
 
+            //Crop clump prior to a bounding box of phi and its neighbors + padding
             cv::Mat clumpPrior = clump->clumpPrior.clone();
             clumpPrior = clumpPrior(boundingBoxWithNeighbors);
 
+            //Perform the modified DRLSE algorithm
             vector <cv::Mat> gradient = calcGradient(phi);
             cv::Mat regularizer = calcSignedDistanceReg(phi, gradient);
-
             cv::Mat dirac = calcDiracDelta(phi, epsilon);
-
             cv::Mat gac = calcGeodesicTerm(dirac, gradient, edgeEnforcer, clumpPrior);
             cv::Mat binaryEnergy = calcAllBinaryEnergy(cellI, edgeEnforcer, clumpPrior, phi, dirac);
 
@@ -38,6 +45,9 @@ namespace segment {
             cellI->setPhi(phi);
         }
 
+        /*
+         * calcAllBinaryEnergy finds the binary energy with all of a cell's neighbors
+         */
         cv::Mat calcAllBinaryEnergy(Cell *cellI, cv::Mat edgeEnforcer, cv::Mat clumpPrior, cv::Mat phiI, cv::Mat dirac) {
             cv::Mat binaryEnergy = cv::Mat::zeros(phiI.rows, phiI.cols, CV_32FC1);
             for (unsigned int cellIdxJ = 0; cellIdxJ < cellI->neighbors.size(); cellIdxJ++) {
@@ -47,6 +57,8 @@ namespace segment {
                     continue;
                 }
 
+                //Get the neighbor cellJ's phi with the same bounding box as cellI's phi
+                //This is possible since phiI's bounding box is of phiI and its neighbors
                 cv::Rect boundingBoxWithNeighbors = cellI->boundingBoxWithNeighbors;
                 cv::Mat phiJ = cellJ->getPhi(boundingBoxWithNeighbors);
                 binaryEnergy += calcBinaryEnergy(phiJ, edgeEnforcer, clumpPrior, dirac);
@@ -54,6 +66,9 @@ namespace segment {
             return binaryEnergy;
         }
 
+        /*
+         * calcBinaryEnergy finds the binary energy between two phis
+         */
         cv::Mat calcBinaryEnergy(cv::Mat mat, cv::Mat edgeEnforcer, cv::Mat clumpPrior, cv::Mat dirac) {
             cv::Mat overAreaTerm;
             cv::Mat heaviside = calcHeavisideInv(mat);
@@ -63,7 +78,11 @@ namespace segment {
             return overAreaTerm;
         }
 
+        /*
+         * calcCurvatureXY finds the X and Y curvature components of a gradient.
+         */
         vector <cv::Mat> calcCurvatureXY(vector <cv::Mat> gradient) {
+            //Small number is used to avoid division by 0
             double smallNumber = 1e-10;
             cv::Mat gradientX = getGradientX(gradient);
             cv::Mat gradientY = getGradientY(gradient);
@@ -74,6 +93,9 @@ namespace segment {
             return {Nx, Ny};
         }
 
+        /*
+         * calcDiracDelta finds the dirac delta of a matrix with the specified sigma
+         */
         cv::Mat calcDiracDelta(cv::Mat mat, double sigma) {
             cv::Mat diracDelta = cv::Mat(mat.rows, mat.cols, CV_32FC1);
             for (int i = 0; i < mat.rows; i++) {
@@ -92,19 +114,24 @@ namespace segment {
         }
 
 
-
+        /*
+         * calcEdgeEnforcer finds the edge enforcer of a matrix
+         * g = 1/(1+f) where f is the magnitude of the gradient
+         * of the gaussian convolution of the matrix
+         */
         cv::Mat calcEdgeEnforcer(cv::Mat mat) {
             mat = mat.clone();
             cv::cvtColor(mat, mat, cv::COLOR_BGR2GRAY);
             mat.convertTo(mat, CV_32FC1);
 
-            //G=fspecial('gaussian',15,sigma)
+            //Find the gaussian kernel of kernel size 15 and sigma 1.5
             cv::Mat gaussianKernel = cv::getGaussianKernel(15, 1.5, CV_32FC1);
+            //Multiply the gaussianKernel with its transpose
             cv::mulTransposed(gaussianKernel, gaussianKernel, false);
-            //Img_smooth=conv2(Img,G,'same')
+            //Smooth the gaussian kernel with gradient convolution
             cv::Mat gaussian = conv2(mat, gaussianKernel, "same");
-            //[Ix,Iy]=gradient(Img_smooth)
-            vector <cv::Mat> gaussianGradient = calcGradient(gaussian);
+            //Find the gradient of the gaussian
+            vector<cv::Mat> gaussianGradient = calcGradient(gaussian);
             cv::Mat gaussianGradientX = getGradientX(gaussianGradient);
             cv::Mat gaussianGradientY = getGradientY(gaussianGradient);
             //f=Ix.^2+Iy.^2
@@ -117,10 +144,12 @@ namespace segment {
             return edgeEnforcer;
         }
 
-        //A unary LSF energy term, following the equation - κδε(φi)div(hCg∇φi|∇φi|)
+        /*
+         * A unary LSF energy term, following the equation - κδε(φi)div(hCg∇φi|∇φi|)
+         */
         cv::Mat calcGeodesicTerm(cv::Mat dirac, vector <cv::Mat> gradient, cv::Mat edgeEnforcer, cv::Mat clumpPrior) {
             cv::Mat distPair = edgeEnforcer.mul(clumpPrior);
-            vector <cv::Mat> distPairGradient = calcGradient(distPair);
+            vector<cv::Mat> distPairGradient = calcGradient(distPair);
 
             cv::Mat vxd = getGradientX(distPairGradient);
             cv::Mat vyd = getGradientY(distPairGradient);
@@ -133,6 +162,12 @@ namespace segment {
             return dirac.mul(vxd.mul(Nx) + vyd.mul(Ny)) + dirac.mul(clumpPrior).mul(edgeEnforcer).mul(curvature);
         }
 
+        /*
+         * calcHeavisideInv finds the inverse of the heaviside of the specified matrix
+         * For each pixel:
+         *   Set to 0 when pixel > 0
+         *   Set to 1 otherwise
+         */
         cv::Mat calcHeavisideInv(cv::Mat mat) {
             cv::Mat heavisideInv = cv::Mat(mat.rows, mat.cols, CV_32FC1);
             for (int i = 0; i < heavisideInv.rows; i++) {
@@ -147,7 +182,9 @@ namespace segment {
             return heavisideInv;
         }
 
-        //A unary LSF energy term, following the equation - μdiv(dp(|∇φi|)∇φi)
+        /*
+         * calcSignedDistanceReg is a unary LSF energy term, following the equation - μdiv(dp(|∇φi|)∇φi)
+         */
         cv::Mat calcSignedDistanceReg(cv::Mat mat, vector<cv::Mat> gradient) {
             cv::Mat gradientX = getGradientX(gradient);
             cv::Mat gradientY = getGradientY(gradient);
@@ -182,6 +219,9 @@ namespace segment {
             return calcDivergence(divX, divY) + 4 * del2(mat);
         }
 
+        /*
+         * conv2 implements the MATLAB conv2 which finds the convolution of a matrix
+         */
         cv::Mat conv2(const cv::Mat &input, const cv::Mat &kernel, const char *shape) {
             cv::Mat flipped_kernel;
             cv::flip(kernel, flipped_kernel, -1);
@@ -206,6 +246,10 @@ namespace segment {
             return result(region);
         }
 
+        /*
+         * del2 implements the MATLAB del2 function which finds
+         * the discrete approximation of the  laplacian of a matrix
+         */
         cv::Mat del2(cv::Mat mat) {
             int rows = mat.rows;
             int cols = mat.cols;
@@ -293,52 +337,6 @@ namespace segment {
                                          2 * mat.at<float>(x, y)) / 4;
 
             return laplacian;
-        }
-
-        //Returns the original matrix as a 1 channel CV_32F
-        cv::Mat ensureMatrixType(cv::Mat matrix) {
-            cv::Mat tmpMatrix = matrix.clone();
-            if (tmpMatrix.channels() >= 3) cv::cvtColor(tmpMatrix, tmpMatrix, CV_BGR2GRAY, 1);
-            if (tmpMatrix.type() != CV_32F) tmpMatrix.convertTo(tmpMatrix, CV_32F, 1.0 / 255);
-            return tmpMatrix;
-        }
-
-        //find biggest contour instead, moe to segtools
-        vector<vector<cv::Point>> getContours(cv::Mat mat) {
-            mat.convertTo(mat, CV_8UC1, 255);
-            vector<vector<cv::Point>> contours;
-            cv::findContours(mat, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-            //cv::drawContours(contourMat, contours, 0, cv::Scalar(0.));
-            return contours;
-        }
-
-
-
-        cv::Mat neumannBoundCond(cv::Mat mat) {
-            int rows = mat.rows;
-            int cols = mat.cols;
-
-            cv::Mat nbc = mat.clone();
-
-            //g([1 nrow],[1 ncol]) = g([3 nrow-2],[3 ncol-2]);
-            nbc.at<float>(0, 0) = nbc.at<float>(2, 2);
-            nbc.at<float>(0, cols - 1) = nbc.at<float>(2, cols - 3);
-            nbc.at<float>(rows - 1, 0) = nbc.at<float>(rows - 3, 2);
-            nbc.at<float>(rows - 1, cols - 1) = nbc.at<float>(rows - 3, cols - 3);
-
-            //g([1 nrow],2:end-1) = g([3 nrow-2],2:end-1);
-            for (int j = 1; j < cols - 1; j++) {
-                nbc.at<float>(0, j) = nbc.at<float>(2, j);
-                nbc.at<float>(rows - 1, j) = nbc.at<float>(rows - 3, j);
-            }
-
-            //g(2:end-1,[1 ncol]) = g(2:end-1,[3 ncol-2]);
-            for (int i = 1; i < rows - 1; i++) {
-                nbc.at<float>(i, 0) = nbc.at<float>(i, 2);
-                nbc.at<float>(i, cols - 1) = nbc.at<float>(i, cols - 3);
-            }
-
-            return nbc;
         }
     }
 }

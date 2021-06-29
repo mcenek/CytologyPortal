@@ -5,6 +5,10 @@
 #include <future>
 
 namespace segment {
+    /*
+     * findNucleiDistances finds the distances from a point to each cell in the clump
+     * returns a vector with pairs of cells and their respective distances
+     */
     vector<pair<Cell*, double>> findNucleiDistances(cv::Point point, Clump *clump) {
         // find the distance to each nucleus
         vector<pair<Cell*, double>> nucleiDistances;
@@ -16,6 +20,10 @@ namespace segment {
         return nucleiDistances;
     }
 
+    /*
+     * findClosestCell returns a pair of the closet cell and its respective distance
+     * to the point specified
+     */
     pair<Cell*, float> findClosestCell(cv::Point point, Clump *clump) {
         Cell *closestCell = nullptr;
         float minDistance = FLT_MAX;
@@ -31,6 +39,10 @@ namespace segment {
         return closestCellDistance;
     }
 
+    /*
+     * sortNucleiDistances sorts a vector of pairs of Cells and their
+     * respective distances by distances
+     */
     void sortNucleiDistances(vector<pair<Cell*, double>> *nucleiDistances) {
         // order the nuclei indices by increasing distance
         sort(nucleiDistances->begin(), nucleiDistances->end(),
@@ -40,6 +52,12 @@ namespace segment {
         );
     }
 
+    /*
+     * findAssociatedCell finds the associated cell of a pixel in the clump
+     * This is done by finding the closest cell to the pixel and ensuring that
+     * a straight line can be drawn from the pixel to the cell without intersecting
+     * clump boundaries
+     */
     Cell* findAssociatedCell(cv::Point point, Clump *clump) {
         vector<pair<Cell*, double>> nucleiDistances = findNucleiDistances(point, clump);
         sortNucleiDistances(&nucleiDistances);
@@ -53,7 +71,10 @@ namespace segment {
         return nullptr;
     }
 
-
+    /*
+     * insideClump returns true when a pixel is inside the clump and false otherwise
+     * The function uses the actual image, the clump contour, and gmm predictions to determine this.
+     */
     bool insideClump(Image *image, Clump *clump, cv::Point point) {
         cv::Point pointImage(point.x + clump->boundingRect.x, point.y + clump->boundingRect.y);
         bool insideImage = pointImage.x >= 0 && pointImage.x < image->gmmPredictions.cols &&
@@ -62,7 +83,14 @@ namespace segment {
             cv::pointPolygonTest(clump->offsetContour, point, false) >= 0;
     }
 
+    /*
+     * associateClumpBoundariesWithCell creates a map of pixels and their associated cell
+     * Optimizations include:
+     *     - associating the entire clump with a cell if there is only one cell in the clump
+     *     - associating pixels near a cell's nuclei with the cell
+     */
     void associateClumpBoundariesWithCell(Image *image, Clump *clump, int c, bool debug) {
+        //Associate the entire clump with a cell if there is only one cell in the clump
         if (clump->cells.size() == 1) {
             Cell *cell = &clump->cells[0];
             cell->cytoMask = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
@@ -78,6 +106,7 @@ namespace segment {
         associatedCells.clear();
         associatedCells.shrink_to_fit();
 
+        //Associating pixels near a cell's nuclei with the cell
         for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
             Cell *cell = &clump->cells[cellIdx];
             cv::Point nucleusCenter = cell->nucleusCenter;
@@ -103,7 +132,7 @@ namespace segment {
             }
         }
 
-
+        //Finding the other pixels' nuclei associations
         for (int row = 0; row < clump->boundingRect.height; row++) {
             for (int col = 0; col < clump->boundingRect.width; col++) {
                 cv::Point point = cv::Point(col, row);
@@ -120,6 +149,9 @@ namespace segment {
     }
 
 
+    /*
+     * associationsToBoundaries converts pixel associations in matrix mask form to contours
+     */
     void associationsToBoundaries(Clump *clump) {
         if (clump->cells.size() > 1) {
             for (int i = 0; i < clump->cells.size(); i++) {
@@ -139,6 +171,9 @@ namespace segment {
         }
     }
 
+    /*
+     * findNeighbors finds cells that are neighbors with each cell in the specified clump
+     */
     void findNeighbors(Clump *clump) {
         if (clump->cells.size() == 1) return;
         for (unsigned int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {

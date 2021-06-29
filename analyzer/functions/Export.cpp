@@ -30,6 +30,7 @@ namespace segment {
         json nucleiCytoRatios = image->loadJSON("nucleiCytoRatios");
         results["nucleiCytoRatios"] = removeClumpArrays(nucleiCytoRatios);
 
+        boost::filesystem::remove_all(image->getWriteDirectory() / "exports" / "thumbnails");
 
         int i = 0;
         for (int clumpIdx = 0; clumpIdx < image->clumps.size(); clumpIdx++) {
@@ -44,8 +45,11 @@ namespace segment {
 
                 cv::Rect cellBounding = cv::boundingRect(cell->cytoBoundary);
                 thumbnail = thumbnail(cellBounding);
-
-                image->writeImage("exports/thumbnails/" + to_string(i), thumbnail);
+                string fileName = to_string(i);
+                fileName += "_" + to_string((int) round(cell->phiArea));
+                fileName += "_" + to_string((int) round(cell->nucleusArea));
+                cout << fileName << endl;
+                image->writeImage("exports/thumbnails/" + fileName, thumbnail);
                 i++;
 
             }

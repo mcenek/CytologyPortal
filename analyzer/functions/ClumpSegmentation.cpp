@@ -7,6 +7,11 @@
 using namespace std;
 
 namespace segment {
+
+    /*
+     * drlse_denoise is a level set method for cleaning up the image
+     * like removing small chunks and smoothing edges
+     */
     cv::Mat drlse_denoise(cv::Mat phi, cv::Mat g, float lambda, float mu, float alpha, float epsilon,
                           float timestep) {
         int iter_in = 2;
@@ -98,6 +103,9 @@ namespace segment {
         return postEdgeDetection;
     }
 
+    /*
+     * runFindConvexHulls finds the convex hulls on a list of contours
+     */
     vector<vector<cv::Point>> runFindConvexHulls(vector<vector<cv::Point>> contours) {
         vector<vector<cv::Point>> hulls(contours.size());
         for (unsigned int i = 0; i < contours.size(); i++)
@@ -120,9 +128,9 @@ namespace segment {
         mat->convertTo(grayscaleMat, CV_8UC3);
         cv::cvtColor(grayscaleMat, grayscaleMat, CV_BGR2GRAY);
 
+        //Increase contrast of image slightly
         cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(2);
         clahe->apply(grayscaleMat, grayscaleMat);
-
 
         grayscaleMat.convertTo(grayscaleMat, CV_64FC1);
         grayscaleMat = grayscaleMat.reshape(0, grayscaleMat.rows * grayscaleMat.cols);
@@ -137,8 +145,10 @@ namespace segment {
         cv::bitwise_not(probCluster1, probCluster2);
 
         cv::Mat initialProbMat;
+        //Concat the two clusters horizontally
         cv::hconcat(probCluster1, probCluster2, initialProbMat);
 
+        //Call the OpenCV gmm methods
         cv::Mat labels;
         cv::Ptr<cv::ml::EM> cell_gmm;
         cv::TermCriteria termCrit = cv::TermCriteria();
@@ -160,6 +170,9 @@ namespace segment {
         return outmat;
     }
 
+    /*
+     * runGmmCleanup cleans up small specks from a gmm mask using a level set method
+     */
     cv::Mat runGmmCleanup(cv::Mat *mat, cv::Mat gmmPredictions) {
         float timestep = 5;
         float mu = 0.04;
@@ -205,30 +218,31 @@ namespace segment {
     int minAreaThreshold = the minimum area, all contours smaller than this are discarded
     */
     vector<vector<cv::Point>> findFinalClumpBoundaries(cv::Mat mat, double minAreaThreshold) {
-
         //Crop gmm because some gmm outputs have a white border which interferes with find contours
         int padding = 2;
         cv::Rect cropRect(padding, padding, mat.cols - 2 * padding, mat.rows - 2 * padding);
         mat = mat(cropRect);
 
         vector<vector<cv::Point>> contours;
+
+        //Run basic contour finding algorithm to find clumps
         cv::findContours(mat, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
 
         double maxArea = 0;
         double secArea = 0;
         vector<vector<cv::Point>> clumpBoundaries = vector<vector<cv::Point> >();
 
-
+        //Split very large clumps in order to improve runtime using erosion and dilation
         for (unsigned int i = 0; i < contours.size(); i++) {
             vector<cv::Point> contour = contours[i];
             double area = cv::contourArea(contour);
 
-            //printf("Clump %d\n", i);
             if (area > minAreaThreshold) {
                 vector<vector<cv::Point>> candidateContours;
                 candidateContours.push_back(contour);
                 if (area > 4000000) {
                     printf("Clump %d's contour of area %f too big\n", i, area);
+                    //Learn the minimum erosion kernel size to split contour, with max of 10
                     for (int erosion_size = 1; erosion_size < 10; erosion_size++) {
                         printf("Clump %d, eroding with size %d\n", i, erosion_size);
                         cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE,
@@ -243,8 +257,9 @@ namespace segment {
                         if (erodeContours.size() <= 1) continue;
                         candidateContours.clear();
 
+                        //Redilate the individual clumps, and check that they are small enough,
+                        //if not, increase the erosion kernel size
                         bool contoursSmallEnough = true;
-
                         for (vector<cv::Point> &erodeContour : erodeContours) {
                             tmpMat.release();
                             tmpMat = cv::Mat(mat.rows, mat.cols, CV_8UC1);
@@ -266,6 +281,7 @@ namespace segment {
                 }
 
 
+                //Add the contours to the list of clump contours
                 for (vector<cv::Point> &candidateContour : candidateContours) {
                     area = cv::contourArea(candidateContour);
                     if (candidateContours.size() > 1) {
@@ -275,7 +291,7 @@ namespace segment {
                         secArea = maxArea;
                         maxArea = area;
                     }
-                    //Undo the cropping
+                    //Undo the cropping from the beginning of the function
                     for(unsigned int j = 0; j < candidateContour.size(); j++) {
                         candidateContour[j] = cv::Point(candidateContour[j].x + padding, candidateContour[j].y + padding);
                     }

@@ -6,6 +6,14 @@
 
 namespace segment {
     /*
+ * getDistance returns the distance between two points
+ */
+    float getDistance(cv::Point &a, cv::Point &b) {
+        cv::Point d = a - b;
+        return cv::sqrt(d.x*d.x + d.y*d.y);
+    }
+
+    /*
      * findNucleiDistances finds the distances from a point to each cell in the clump
      * returns a vector with pairs of cells and their respective distances
      */
@@ -257,20 +265,6 @@ namespace segment {
     }
 
     /*
-     * findDistanceToNearestNucleus returns the distance to the closest nucleus
-     */
-    float findDistanceToNearestNucleus(Clump *clump, Cell *cell) {
-        float minDistance = FLT_MAX;
-        for (int i = 0; i < clump->cells.size(); i++) {
-            Cell *comparatorCell = &clump->cells[i];
-            if (cell == comparatorCell) continue;
-            float distance = getDistance(cell->nucleusCenter, comparatorCell->nucleusCenter);
-            minDistance = min(minDistance, distance);
-        }
-        return minDistance;
-    }
-
-    /*
      * testLineViability ensures that we can draw a straight line from the pixel to cell's nucleus
      * without intersecting clump boundaries.
      */
@@ -285,14 +279,6 @@ namespace segment {
             }
         }
         return true;
-    }
-
-    /*
-     * getDistance returns the distance between two points
-     */
-    float getDistance(cv::Point &a, cv::Point &b) {
-        cv::Point d = a - b;
-        return cv::sqrt(d.x*d.x + d.y*d.y);
     }
 
     /*

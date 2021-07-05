@@ -493,6 +493,9 @@ namespace segment {
         }
     }
 
+    /*
+     * loadCellNeighbors loads cell neighbors from a JSON file into memory
+     */
     void loadCellNeighbors(json &cellNeighbors, Image *image, vector<Clump> *clumps) {
         cellNeighbors = image->loadJSON("cellNeighbors");
         for (int clumpIdx = 0; clumpIdx < cellNeighbors.size(); clumpIdx++) {
@@ -513,6 +516,9 @@ namespace segment {
         }
     }
 
+    /*
+     * saveInitialCellBoundaries saves each cell's initial boundaries as contours to a JSON file
+     */
     void saveInitialCellBoundaries(json &initialCellBoundaries, Image *image, Clump *clump, int clumpIdx) {
         for (int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
             Cell *cell = &(clump->cells[cellIdx]);
@@ -523,11 +529,15 @@ namespace segment {
             initialCellBoundaries[clumpIdx][cellIdx] = initialCellBoundary;
         }
 
+        //Write to JSON file every 100 clumps or when the clump is big
         if (clumpIdx % 100 == 0 || clump->cells.size() > 5000) {
             image->writeJSON("initialCellBoundaries", initialCellBoundaries);
         }
     }
 
+    /*
+     * loadInitialCellBoundaries loads initial cell boundaries from a JSON file into memory
+     */
     void loadInitialCellBoundaries(json &initialCellBoundaries, Image *image, vector<Clump> *clumps) {
         initialCellBoundaries = image->loadJSON("initialCellBoundaries");
         for (int clumpIdx = 0; clumpIdx < initialCellBoundaries.size(); clumpIdx++) {
@@ -565,6 +575,10 @@ namespace segment {
         }
     }
 
+    /*
+     * runInitialCellSegmentation is the main function that finds the initial cell boundaries for the image
+     * This function spawns multiple threads for each clump that finds the inital cell boundaries.
+     */
     cv::Mat runInitialCellSegmentation(Image *image, int threshold1, int threshold2, bool debug) {
         vector<Clump> *clumps = &image->clumps;
         // run a find contour on the nucleiBoundaries to get them as contours, not regions
@@ -582,6 +596,7 @@ namespace segment {
         loadInitialCellBoundaries(initialCellBoundaries, image, clumps);
         loadCellNeighbors(cellNeighbors, image, clumps);
 
+        //Function called when thread is started
         function<void(Clump *, int)> threadFunction = [&image, &debug, &rng, &outimg](Clump *clump, int clumpIdx) {
             if (clump->initCytoBoundariesLoaded) {
                 image->log("Loaded clump %u initial cell boundaries from file\n", clumpIdx);
@@ -612,7 +627,9 @@ namespace segment {
             }
         };
 
+        //Function called when thread finishes
         function<void(Clump *, int)> threadDoneFunction = [&initialCellBoundaries, &cellNeighbors, &image](Clump *clump, int clumpIdx) {
+            //Save cell boundaries and neighbors to file if it wasn't loaded from the JSON file
             if (!clump->initCytoBoundariesLoaded) {
                 saveInitialCellBoundaries(initialCellBoundaries, image, clump, clumpIdx);
                 saveCellNeighbors(cellNeighbors, image, clump, clumpIdx);
@@ -622,6 +639,7 @@ namespace segment {
         int maxThreads = 16;
         ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 
+        //Save all remaining cell boundaries and neighbors to JSON file
         image->writeJSON("initialCellBoundaries", initialCellBoundaries);
         image->writeJSON("cellNeighbors", cellNeighbors);
 

@@ -7,6 +7,10 @@ using json = nlohmann::json;
 
 namespace segment {
 
+    /*
+     * removeClumpsWithoutNuclei removes unnecessary clumps that do not have any
+     * detectable nuclei
+     */
     void removeClumpsWithoutNuclei(vector<Clump> *clumps) {
         // remove clumps that don't have any nuclei
         int tempindex = 0;

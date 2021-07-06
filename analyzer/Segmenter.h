@@ -40,6 +40,8 @@ namespace segment {
         void setCommonValues();
 
         void runSegmentation(string fileName);
+        double* createNucleiHist(Image image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity, double minCircularity, bool debug);
+        void Segmenter::optimizeParameters(string filename1, string filename2);
     };
 }
 

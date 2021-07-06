@@ -186,6 +186,80 @@ namespace segment {
             //cv::waitKey(0);
         }
     }
+    void Segmenter::optimizeParameters(string filename1, string filename2){
+        //focus on nuclei detection
+        debug = true;
+        
+        Image image1 = Image(filename1); 
+        Image image2 = Image(filename2); 
+        cv::Mat outimg;
+        double* firstHist;
+        firstHist = createNucleiHist(image1, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);
+        double* secondHist;
+        secondHist = createNucleiHist(image2, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);
+        
+
+        //cv::Mat::fixed<2,266> dataset = mat(2,266);
+        //dataset = {firstHist, secondHist};
+        
+        //use single cells for responses
+        //use contour with blkank background  and simulate with background same intensity as cytom plasm
+        
+        //using namespace mlpack;
+        //double validationSize = .5;
+        //hpt::HyperParameterTuner<createNucleiHist, mlpack::cv::Accuracy, mlpack::cv::SimpleCV, ens::GridSearch > hpt(validationSize, dataset, responses); // need to figure out responses
+        double Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity;
+        
+
+        
+        
+        this->delta = Bestdelta;
+        this->minArea = BestminArea;
+        this->maxArea = BestmaxArea;
+        this->maxVariation = BestmaxVariation;
+        this->minDiversity = BestminDiversity;
+        this->minCircularity = BestminCircularity;
+        std::cout << "Best:" << Bestdelta << " " << BestminArea << " " << BestmaxArea << " " << BestmaxVariation << " " << BestminDiversity << " " << BestminCircularity;
+
+
+
+    }
+    double* createNucleiHist(Image image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity, double minCircularity, bool debug){
+        runNucleiDetection( &image,  delta,  minArea, maxArea,  maxVariation,  minDiversity,  minCircularity,  debug);
+        cv::Mat outimg;
+        outimg = image.getNucleiBoundaries();
+        image.writeImage("nucleiBoundaries.png", outimg);
+        outimg.release();
+        //double dataset[256];
+        // = Segmenter::toHistogram("nucleiBoundaries.png");
+        //source: https://docs.opencv.org/3.4/d5/d98/tutorial_mat_operations.html
+        cv::Mat img1 = cv::imread("nucleiBoundaries.png", CV_LOAD_IMAGE_GRAYSCALE);
+        int histogram[256];
+
+        for(int y = 0; y < img1.rows; y++){
+        for(int x = 0; x < img1.cols; x++){
+                histogram[(int)img1.at<uchar>(y,x)]++;
+        }
+        }
+        //for(int i = 0; i < 256; i++){ cout<<histogram[i]<<" "; }
+        /* int hist_w = img1.cols; 
+        int hist_h = img1.rows;
+        int bin_w = cvRound((double) hist_w/256); */
+        std::sort(histogram, histogram + 256, greater<int>());
+        double histogram2[256];
+        for(int z = 0; z< 256; z++){
+                histogram2[z] = (double) histogram[z];
+        }
+       
+        
+
+        /* for(int i = 0; i < 255; i++){ // normalize intensity
+                histogram2[i] = ((double)histogram[i]/max)*histImage.rows;
+        } */
+        return histogram2;
+        
+        //return dataset;                                     
+    }
 
 
 }

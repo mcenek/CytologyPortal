@@ -192,24 +192,35 @@ namespace segment {
         
         Image image1 = Image(filename1); 
         Image image2 = Image(filename2); 
+        cv::Mat testImage = cv::imread(filename1);
+        testImage = Segmenter::maskNuclei(testImage);
+
+        
         cv::Mat outimg;
-        double* firstHist;
-        firstHist = createNucleiHist(image1, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);
-        double* secondHist;
-        secondHist = createNucleiHist(image2, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);
+        cv::Mat firstHist;
+        firstHist = Segmenter::createNucleiHist(image1, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);// where hist one is control
+        //replace with masked nuclei
+        cv::Mat secondHist;
+        secondHist = Segmenter::createNucleiHist(image2, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);
         
 
-        //cv::Mat::fixed<2,266> dataset = mat(2,266);
-        //dataset = {firstHist, secondHist};
-        
-        //use single cells for responses
-        //use contour with blkank background  and simulate with background same intensity as cytom plasm
-        
-        //using namespace mlpack;
-        //double validationSize = .5;
-        //hpt::HyperParameterTuner<createNucleiHist, mlpack::cv::Accuracy, mlpack::cv::SimpleCV, ens::GridSearch > hpt(validationSize, dataset, responses); // need to figure out responses
         double Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity;
+        Bestdelta = this->delta;
+        BestminArea = this->minArea;
+        BestmaxArea = this->maxArea;
+        BestmaxVariation = this->maxVariation ;
+        BestminDiversity = this->minDiversity ;
+        BestminCircularity = this->minCircularity ;
         
+        bool Optimized = false;
+        while(Optimized == false){
+                double compare = cv::compareHist(firstHist, secondHist, cv::HISTCMP_CORREL );
+                //https://docs.opencv.org/master/d6/dc7/group__imgproc__hist.html#ga994f53817d621e2e4228fc646342d386
+                secondHist = createNucleiHist(image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug);
+                if(compare >= .8){
+                        Optimized = true;
+                }
+        }
 
         
         
@@ -224,41 +235,44 @@ namespace segment {
 
 
     }
-    double* createNucleiHist(Image image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity, double minCircularity, bool debug){
+    cv::Mat Segmenter::createNucleiHist(Image image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity, double minCircularity, bool debug){
         runNucleiDetection( &image,  delta,  minArea, maxArea,  maxVariation,  minDiversity,  minCircularity,  debug);
         cv::Mat outimg;
         outimg = image.getNucleiBoundaries();
         image.writeImage("nucleiBoundaries.png", outimg);
         outimg.release();
-        //double dataset[256];
-        // = Segmenter::toHistogram("nucleiBoundaries.png");
-        //source: https://docs.opencv.org/3.4/d5/d98/tutorial_mat_operations.html
+        //run nuclei detection
         cv::Mat img1 = cv::imread("nucleiBoundaries.png", CV_LOAD_IMAGE_GRAYSCALE);
-        int histogram[256];
-
-        for(int y = 0; y < img1.rows; y++){
-        for(int x = 0; x < img1.cols; x++){
-                histogram[(int)img1.at<uchar>(y,x)]++;
-        }
-        }
-        //for(int i = 0; i < 256; i++){ cout<<histogram[i]<<" "; }
-        /* int hist_w = img1.cols; 
-        int hist_h = img1.rows;
-        int bin_w = cvRound((double) hist_w/256); */
-        std::sort(histogram, histogram + 256, greater<int>());
-        double histogram2[256];
-        for(int z = 0; z< 256; z++){
-                histogram2[z] = (double) histogram[z];
-        }
-       
-        
-
-        /* for(int i = 0; i < 255; i++){ // normalize intensity
-                histogram2[i] = ((double)histogram[i]/max)*histImage.rows;
-        } */
-        return histogram2;
+        cv::Mat histogram;
+        int histSize = 256;
+        //read in image
+        float range[] = {0,256};
+        const float* histRange[] = {range};
+        bool uniform = true, accumulate = false;
+        cv::calcHist(&img1, 1, 0, cv::Mat(), histogram, 1, &histSize, histRange, uniform, accumulate);
+        //create hist and return
+        return histogram;
         
         //return dataset;                                     
+    }
+    cv::Mat Segmenter::maskNuclei(cv::Mat image){
+            using namespace cv;
+            Mat toReturn;
+            Mat image2;
+            cvtColor(image,  image2, cv::COLOR_BGR2GRAY );
+            double cytoIntesity = 150;
+            double nucleiIntensityThresh = 50;
+            threshold(image2, toReturn, nucleiIntensityThresh, cytoIntesity, 4 );
+            for(int i=0; i <toReturn.rows;i++){
+                    for(int j=0;toReturn.cols;j++){
+                            if(toReturn.at<uchar>(i,j) = 0){
+                                   toReturn.at<uchar>(i,j) = cytoIntesity;
+                            }
+                    }
+            }
+
+            //grabCut();
+            return toReturn;
     }
 
 

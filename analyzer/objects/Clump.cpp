@@ -6,7 +6,9 @@ using namespace std;
 
 namespace segment {
 
-
+    /*
+     * padBoundingBox returns a bounding box with padding
+     */
     cv::Rect padBoundingBox(cv::Mat mat, cv::Rect boundingBox, int padding) {
         cv::Rect returnRect = cv::Rect(boundingBox.x - padding, boundingBox.y - padding, boundingBox.width + (padding * 2), boundingBox.height + (padding * 2));
         if (returnRect.x < 0)returnRect.x = 0;
@@ -16,9 +18,10 @@ namespace segment {
         return returnRect;
     }
 
-    // Given that contour is defined, compute the bounding rect
-    cv::Rect Clump::computeBoundingRect(cv::Mat img)
-    {
+    /*
+     * computeBoundingRect compiutes the bounding rectangle of a clump
+     */
+    cv::Rect Clump::computeBoundingRect(cv::Mat img) {
         if(this->contour.empty())
             std::cerr << "Contour must be defined before Clump::computeBoundingRect() can be run." << '\n';
         this->boundingRect = cv::boundingRect(this->contour);
@@ -26,8 +29,10 @@ namespace segment {
         return this->boundingRect;
     }
 
-    vector<cv::Point> Clump::computeOffsetContour()
-    {
+    /*
+     * computeOffsetContour computes the contour of a clump relative to (0, 0)
+     */
+    vector<cv::Point> Clump::computeOffsetContour() {
         if(this->boundingRect.empty())
             std::cerr << "boundingRect must be defined before Clump::computeOffsetContour() can be run." << '\n';
         for(unsigned int i=0; i<this->contour.size(); i++)
@@ -35,16 +40,22 @@ namespace segment {
         return this->offsetContour;
     }
 
+    /*
+     * undoOffsetContour undoes the bounding rectangle of nuclei so that they are relative to the image
+     */
     vector<vector<cv::Point>> Clump::undoOffsetContour() {
         vector<vector<cv::Point>> tmpBoundaries = this->nucleiBoundaries;
 
         for(unsigned int i = 0; i < tmpBoundaries.size(); i++) {
-            tmpBoundaries[i] = this->undoBoundingRect( tmpBoundaries[i]);
+            tmpBoundaries[i] = this->undoBoundingRect(tmpBoundaries[i]);
         }
         return tmpBoundaries;
 
     }
 
+    /*
+     * undoBoundingRect undoes the bounding rectangle of a contour so that they are relative to the image
+     */
     vector<cv::Point> Clump::undoBoundingRect(vector<cv::Point> boundary) {
 
         for(unsigned int j = 0; j < boundary.size(); j++) {
@@ -54,25 +65,19 @@ namespace segment {
         return boundary;
     }
 
-    // Mask the clump from the original image, return the result
+    /*
+     * extractFull returns a masked clump such that anything outside the clump is 1.0
+     * and anything inside the clump is the image of the clump
+     */
     cv::Mat Clump::extractFull(bool showBoundary)
     {
         cv::Mat img = this->image->mat;
 
         // create clump mask
         cv::Mat mask = cv::Mat::zeros(img.rows, img.cols, CV_8U);
-
         cv::drawContours(mask, vector<vector<cv::Point> >(1, this->contour), 0, cv::Scalar(1.0), CV_FILLED);
-
         cv::Mat clumpFull = cv::Mat::zeros(img.rows, img.cols, CV_64F);
-
         img.copyTo(clumpFull, mask);
-
-
-        //TODO - Remove
-        /*cout << "Clump Mask" << endl;
-          cv::imshow("Clump Mask", mask);
-          cv::waitKey(0);*/
 
         if (showBoundary)
             cv::drawContours(clumpFull, vector<vector<cv::Point> >(1, this->contour), 0, cv::Scalar(1.0, 0., 1.0));
@@ -81,17 +86,13 @@ namespace segment {
         cv::bitwise_not(clumpFull, clumpFull, mask);
         cv::bitwise_not(clumpFull, clumpFull);
 
-        //TODO - Remove
-        /*cout << "Inverted Clump Mask" << endl;
-          cv::imshow("Clump Mask", clumpFull);
-          cv::waitKey(0);*/
-
-
         return clumpFull;
     }
 
-    // Mask the clump from the original image, then return a mat cropped to show
-    // only this clump
+    /*
+     * extract returns a cropped version of the clump and masks it such that anything outside the clump is 1.0
+     * and anything inside the clump is the image of the clump and optionally adds a boundary to the clump.
+     */
     cv::Mat Clump::extract(bool showBoundary)
     {
         cv::Mat img = this->extractFull(showBoundary);
@@ -108,7 +109,9 @@ namespace segment {
         return clump;
     }
 
-    // If nucleiBoundaries are defined, compute the center of each nuclei
+    /*
+     * computeNucleusCenters computes the center of each nuclei
+     */
     vector<cv::Point> Clump::computeNucleusCenters()
     {
         if(this->nucleiBoundaries.empty())
@@ -130,6 +133,9 @@ namespace segment {
         return this->nucleiCenters;
     }
 
+    /*
+     * createCells creates Cell objects for each nucleus detected in the clump.
+     */
     void Clump::createCells() {
         if(this->nucleiBoundaries.empty())
             cerr << "nucleiBoundaries must be defined and present before Clump::createCells can be run." << "\n";
@@ -140,13 +146,13 @@ namespace segment {
             cell.nucleusBoundary = vector<cv::Point>(*boundary);
             cell.nucleusArea = cv::contourArea(cell.nucleusBoundary);
             cell.computeNucleusCenter();
-            //cell.generateColor(); //TODO: Not strictly guarenteed to be unique.. Could lead to segmentation errors as currently implemented
-
             this->cells.push_back(cell);
         }
-        //this->generateNucleiMasks();
     }
 
+    /*
+     * convertNucleiBoundariesToContours takes a mask of nuclei boundaries and converts them to contours
+     */
     void Clump::convertNucleiBoundariesToContours() {
         if(this->nucleiBoundaries.empty())
             cerr << "nucleiBoundaries must be defined and present before Clump::convertNucleiBoundariesToContours can be run." << "\n";
@@ -155,6 +161,9 @@ namespace segment {
         cv::findContours(regionMask, this->nucleiBoundaries, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
     }
 
+    /*
+     * filterNuclei filters nuclei above a specified circularity
+     */
     void Clump::filterNuclei(double minCircularity) {
         vector<vector<cv::Point>> filteredNuclei;
         for (int i = 0; i < this->nucleiBoundaries.size(); i++) {
@@ -188,18 +197,26 @@ namespace segment {
     }
      */
 
+    /*
+     * calcClumpPrior calculates a clump prior of a clump by finding the maximum of each cell's shape prior
+     * and masking the clump
+     */
     cv::Mat Clump::calcClumpPrior() {
         this->clumpPrior = cv::Mat::ones(this->boundingRect.height, this->boundingRect.width, CV_32FC1);
+        //Create a mask of the clump
         cv::drawContours(this->clumpPrior, vector<vector<cv::Point>>{this->offsetContour}, 0, 0, CV_FILLED);
         for (unsigned int cellIdx = 0; cellIdx < this->cells.size(); cellIdx++) {
             Cell *cell = &this->cells[cellIdx];
+            //The shape prior is relative to the cell's bounding box, so we have to make it relative to the clump
             cv::Mat shapePrior = cell->calcShapePrior();
             for (int i = 0; i < shapePrior.rows; i++) {
                 for (int j = 0; j < shapePrior.cols; j++) {
+                    //Make shape prior relative to the clump
                     cv::Point shapePriorPoint(j, i);
                     cv::Point clumpPriorPoint(cell->boundingBox.x + j, cell->boundingBox.y + i);
                     float shapePriorValue = shapePrior.at<float>(shapePriorPoint);
                     float clumpPriorValue = this->clumpPrior.at<float>(clumpPriorPoint);
+                    //Set clump prior to maximum of the shape priors
                     if (shapePriorValue > clumpPriorValue) {
                         this->clumpPrior.at<float>(clumpPriorPoint) = shapePriorValue;
                     }
@@ -213,6 +230,9 @@ namespace segment {
         return this->clumpPrior;
     }
 
+    /*
+     * getFinalCellContours returns a list of final cell contours
+     */
     vector<vector<cv::Point>> Clump::getFinalCellContours() {
         vector<vector<cv::Point>> finalContours;
         for (unsigned int cellIdx = 0; cellIdx < this->cells.size(); cellIdx++) {

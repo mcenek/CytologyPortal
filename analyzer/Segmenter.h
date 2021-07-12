@@ -20,10 +20,15 @@ namespace segment {
         // GMM post processing params
         double minAreaThreshold;
         // MSER params
-        int delta, minArea, maxArea; //minArea was 120
+        int delta, minArea, maxArea;
         double maxVariation, minDiversity;
         double minCircularity;
-
+        // Cell segmentation params
+        double dt;
+        double epsilon;
+        double mu;
+        double kappa;
+        double chi;
 
     private:
         // internal attributes

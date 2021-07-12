@@ -47,14 +47,8 @@ namespace segment {
      * We run the Distance Regulated Level Set Evolution (DRLSE) Algortithm.
      * We check every 50 loops or iterations for convergence
      */
-    void startOverlappingCellSegmentationThread(Image *image, Clump *clump, int clumpIdx) {
-        //Initialize set up parameters
-        double dt = 5; //Time step
-        double epsilon = 1.5; //Pixel spacing
-        double mu = 0.04; //Contour length weighting parameter
-        double kappa = 13;
-        double chi = 3;
-
+    void startOverlappingCellSegmentationThread(Image *image, Clump *clump, int clumpIdx,
+                                                double dt, double epsilon, double mu, double kappa, double chi) {
         int cellsConverged = 0;
 
         // Mark as converged if clump only has one cell
@@ -150,7 +144,7 @@ namespace segment {
      * runOverlappingSegmentation is the main function that finds the final cell boundaries for the image
      * This function spawns multiple threads for each clump that finds the final cell boundaries.
      */
-    void runOverlappingSegmentation(Image *image) {
+    void runOverlappingSegmentation(Image *image, double dt, double epsilon, double mu, double kappa, double chi) {
         vector<Clump> *clumps = &image->clumps;
 
         json finalCellBoundaries;
@@ -159,7 +153,7 @@ namespace segment {
         // Load final cell boundaries from finalCellBoundaries.json if it exists
         loadFinalCellBoundaries(finalCellBoundaries, image, clumps);
 
-        function<void(Clump *, int)> threadFunction = [&image](Clump *clump, int clumpIdx) {
+        function<void(Clump *, int)> threadFunction = [&image, &dt, &epsilon, &mu, &kappa, &chi](Clump *clump, int clumpIdx) {
             // Do not run the level set algorithm if the final contours have been loaded from file
             if (clump->finalCellContoursLoaded) {
                 image->log("Loaded clump %u final cell boundaries from file\n", clumpIdx);
@@ -173,7 +167,7 @@ namespace segment {
             clump->clumpPrior = padMatrix(clump->calcClumpPrior(), cv::Scalar(255, 255, 255));
 
             // Run the level set algorithm
-            startOverlappingCellSegmentationThread(image, clump, clumpIdx);
+            startOverlappingCellSegmentationThread(image, clump, clumpIdx, dt, epsilon, mu, kappa, chi);
         };
 
         function<void(Clump *, int)> threadDoneFunction = [&finalCellBoundaries, &nucleiCytoRatios, &image](Clump *clump, int clumpIdx) {

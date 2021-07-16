@@ -33,8 +33,6 @@ namespace segment {
      * computeOffsetContour computes the contour of a clump relative to (0, 0)
      */
     vector<cv::Point> Clump::computeOffsetContour() {
-        if(this->boundingRect.empty())
-            std::cerr << "boundingRect must be defined before Clump::computeOffsetContour() can be run." << '\n';
         for(unsigned int i=0; i<this->contour.size(); i++)
             this->offsetContour.push_back(cv::Point(this->contour[i].x - this->boundingRect.x, this->contour[i].y - this->boundingRect.y));
         return this->offsetContour;
@@ -96,9 +94,6 @@ namespace segment {
     cv::Mat Clump::extract(bool showBoundary)
     {
         cv::Mat img = this->extractFull(showBoundary);
-
-        if (this->boundingRect.empty())
-            std::cerr << "boundingRect must be defined before Clump::extract() can be run." << '\n';
 
         cv::Mat clump = cv::Mat(img, this->boundingRect);
         if (showBoundary)

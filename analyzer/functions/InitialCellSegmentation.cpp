@@ -3,6 +3,7 @@
 #include "../objects/ClumpsThread.h"
 #include <thread>
 #include <future>
+#include <chrono>
 
 namespace segment {
     /*
@@ -444,8 +445,11 @@ namespace segment {
     void startInitialCellSegmentationThread(Image *image, Clump *clump, int clumpIdx, bool debug) {
         image->log("Beginning initial cell segmentation for clump %d, width: %d, height: %d\n", clumpIdx, clump->boundingRect.width, clump->boundingRect.height);
 
+        auto start = chrono::high_resolution_clock::now();
         associateClumpBoundariesWithCell(image, clump, clumpIdx, debug);
-        image->log("Clump %d, done associate clump boundaries with cells\n", clumpIdx);
+        auto end = std::chrono::duration_cast<std::chrono::microseconds>(
+                chrono::high_resolution_clock::now() - start).count() / 1000000.0;
+        image->log("Clump %d, done associate clump boundaries with cells, time: %f\n", clumpIdx, end);
         associationsToBoundaries(clump);
         findNeighbors(clump);
 
@@ -455,12 +459,14 @@ namespace segment {
             for (unsigned int compIdx = 0; compIdx < cell->neighbors.size(); compIdx++) {
                 Cell *neighborCell = cell->neighbors[compIdx];
                 if (cell == neighborCell) continue;
-                image->log("Clump %d, Cell %d/%zu, Neighbors: %d/%zu\n", clumpIdx, cellIdx, clump->cells.size() - 1,
+                //image->log("Clump %d, Cell %d/%zu, Neighbors: %d/%zu\n", clumpIdx, cellIdx, clump->cells.size() - 1,
                            compIdx, cell->neighbors.size() - 1);
                 interpolateOverlappingArea(clump, cell, neighborCell);
             }
         }
-        image->log("Finishing initial cell segmentation for clump %d\n", clumpIdx);
+        end = std::chrono::duration_cast<std::chrono::microseconds>(
+                chrono::high_resolution_clock::now() - start).count() / 1000000.0;
+        image->log("Finishing initial cell segmentation for clump %d, time: %f\n", clumpIdx, end);
     }
 
     /*

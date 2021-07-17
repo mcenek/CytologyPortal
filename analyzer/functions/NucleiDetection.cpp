@@ -155,7 +155,7 @@ namespace segment {
         //Function called when thread is started
         function<void(Clump *, int)> threadFunction = [&image, &delta, &minArea, &maxArea, &maxVariation, &minDiversity, &minCircularity, &debug](Clump *clump, int i) {
             if (clump->nucleiBoundariesLoaded) {
-                image->log("Loaded clump %u nuclei from file\n", i);
+                //image->log("Loaded clump %u nuclei from file\n", i);
                 return;
             }
             cv::Mat clumpMat = clump->extract();
@@ -168,7 +168,7 @@ namespace segment {
                 clump->convertNucleiBoundariesToContours();
                 clump->filterNuclei(minCircularity);
             }
-            image->log("Clump %u, nuclei found: %lu\n", i, clump->nucleiBoundaries.size());
+            //image->log("Clump %u, nuclei found: %lu\n", i, clump->nucleiBoundaries.size());
         };
 
         //Function called when thread finishes

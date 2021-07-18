@@ -642,7 +642,7 @@ namespace segment {
             }
         };
 
-        int maxThreads = 16;
+        int maxThreads = 32;
         ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 
         //Save all remaining cell boundaries and neighbors to JSON file

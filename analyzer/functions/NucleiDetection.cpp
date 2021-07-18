@@ -178,7 +178,7 @@ namespace segment {
             }
         };
 
-        int maxThreads = 4;
+        int maxThreads = 32;
         ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 
         //DEBUG: Print the first and second clumps with the most nuclei

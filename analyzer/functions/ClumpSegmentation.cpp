@@ -236,14 +236,13 @@ namespace segment {
         for (unsigned int i = 0; i < contours.size(); i++) {
             vector<cv::Point> contour = contours[i];
             double area = cv::contourArea(contour);
-
             if (area > minAreaThreshold) {
                 vector<vector<cv::Point>> candidateContours;
                 candidateContours.push_back(contour);
                 if (area > 1000000) {
                     printf("Clump %d's contour of area %f too big\n", i, area);
                     //Learn the minimum erosion kernel size to split contour, with max of 10
-                    for (int erosion_size = 1; erosion_size <= 51; erosion_size += 2) {
+                    for (int erosion_size = 1; erosion_size <= 22; erosion_size += 3) {
                         printf("Clump %d, eroding with size %d\n", i, erosion_size);
                         cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE,
                                                                     cv::Size(2 * erosion_size + 1, 2 * erosion_size + 1),

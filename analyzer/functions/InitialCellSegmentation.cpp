@@ -459,8 +459,7 @@ namespace segment {
             for (unsigned int compIdx = 0; compIdx < cell->neighbors.size(); compIdx++) {
                 Cell *neighborCell = cell->neighbors[compIdx];
                 if (cell == neighborCell) continue;
-                //image->log("Clump %d, Cell %d/%zu, Neighbors: %d/%zu\n", clumpIdx, cellIdx, clump->cells.size() - 1,
-                           compIdx, cell->neighbors.size() - 1);
+                //image->log("Clump %d, Cell %d/%zu, Neighbors: %d/%zu\n", clumpIdx, cellIdx, clump->cells.size() - 1, compIdx, cell->neighbors.size() - 1);
                 interpolateOverlappingArea(clump, cell, neighborCell);
             }
         }

@@ -214,11 +214,35 @@ namespace segment {
         
         bool Optimized = false;
         while(Optimized == false){
-                double compare = cv::compareHist(firstHist, secondHist, cv::HISTCMP_CORREL );
-                //https://docs.opencv.org/master/d6/dc7/group__imgproc__hist.html#ga994f53817d621e2e4228fc646342d386
-                secondHist = createNucleiHist(image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug);
-                if(compare >= .8){
-                        Optimized = true;
+                // double compare = cv::compareHist(firstHist, secondHist, cv::HISTCMP_CORREL );
+                // //https://docs.opencv.org/master/d6/dc7/group__imgproc__hist.html#ga994f53817d621e2e4228fc646342d386
+                // secondHist = createNucleiHist(image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug);
+                // if(compare >= .8){
+                //         Optimized = true;
+                //         //possibly use dlib?
+                        
+                // }
+                for(int i =0; i<this->minArea;i++){
+                     BestminArea = i;
+                     for(int j = this->minArea; j<this->maxArea;j++){  
+                        BestmaxArea = j;
+                        for(double k =0.1; k<1;k + .001){
+                                BestmaxVariation = k;
+                                for(double l =0.8; l<4;i+ .1){
+                                        Bestdelta = l;
+                                        for(double m =0.1; m<1;i+.01){
+                                                BestminDiversity = m;
+                                                secondHist = createNucleiHist(image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug);
+                                                double compare = cv::compareHist(firstHist, secondHist, cv::HISTCMP_CORREL );
+                                                //https://docs.opencv.org/master/d6/dc7/group__imgproc__hist.html#ga994f53817d621e2e4228fc646342d386
+                                                secondHist = createNucleiHist(image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug);
+                                                if(compare >= .8){
+                                                        Optimized = true;
+                                                }
+                                        }
+                                }
+                        }
+                     }
                 }
         }
 

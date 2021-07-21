@@ -5,7 +5,9 @@ using namespace std;
 
 namespace segment {
 
-    //Returns a divergence of the given matrix
+    /*
+     * calcDivergence returns a divergence of the given matrix
+     */
     cv::Mat calcDivergence(cv::Mat x, cv::Mat y) {
         vector <cv::Mat> gradientX = calcGradient(x);
         vector <cv::Mat> gradientY = calcGradient(y);
@@ -14,7 +16,12 @@ namespace segment {
         return gradientXX + gradientYY;
     }
 
-    vector <cv::Mat> calcGradient(cv::Mat image) {
+    /*
+     * calcGradient returns a gradient of the given matrix as a vector
+     * where gradient[0] = gradientX
+     * and   gradient[1] = gradientY
+     */
+    vector<cv::Mat> calcGradient(cv::Mat image) {
         int rows = image.rows;
         int cols = image.cols;
 
@@ -50,27 +57,40 @@ namespace segment {
         return {gradientX, gradientY};
     }
 
-    //Returns the magnitude for the given matricies
+    /*
+     * calcGradientMagnitude returns the gradient magnitude for the given matrix
+     */
     cv::Mat calcGradientMagnitude(cv::Mat img) {
         vector <cv::Mat> gradient = calcGradient(img);
         return calcMagnitude(getGradientX(gradient), getGradientY(gradient));
     }
 
-    //Returns the magnitude for the given matricies
+    /*
+     * calcMagnitude returns the magnitude for the given matrices
+     */
     cv::Mat calcMagnitude(cv::Mat x, cv::Mat y) {
         cv::Mat magnitude;
         cv::magnitude(x, y, magnitude);
         return magnitude;
     }
 
+    /*
+     * getGradientX returns the X component of the gradient
+     */
     cv::Mat getGradientX(vector <cv::Mat> gradient) {
         return gradient[0];
     }
 
+    /*
+     * getGradientY returns the Y component of the gradient
+     */
     cv::Mat getGradientY(vector <cv::Mat> gradient) {
         return gradient[1];
     }
 
+    /*
+     * hasOverlap returns true if the matrices overlap and false otheriwse
+     */
     bool hasOverlap(cv::Mat mat1, cv::Mat mat2) {
         cv::Mat thresholdMat1, thresholdMat2;
         cv::threshold(mat1, thresholdMat1, 0, 1, CV_THRESH_BINARY_INV);
@@ -80,12 +100,18 @@ namespace segment {
         return cv::countNonZero(overlapMask) > 0;
     }
 
+    /*
+     * displayMatrix shows and prints the matrix with the specified label
+     */
     void displayMatrix(string name, cv::Mat mat) {
         cv::imshow(name, mat);
         printMatrix(name, mat);
         cv::waitKey(0);
     }
 
+    /*
+     * displayMatrixList shows and prints the matrices with the specified label
+     */
     void displayMatrixList(string prefix, vector<cv::Mat> matrices) {
         for (size_t i = 0; i < matrices.size(); i++) {
             string label = prefix + "_" + to_string(i);
@@ -93,13 +119,18 @@ namespace segment {
         }
     }
 
-
+    /*
+     * drawContour draws contours onto the specified matrix
+     */
     cv::Mat drawContour(cv::Mat img, vector<cv::Point> contour) {
         vector<vector<cv::Point>> contours = {contour};
         cv::drawContours(img, contours, 0, (255,255,255), 2);
         return img;
     }
 
+    /*
+     * printMatrix prints the specified matrix
+     */
     void printMatrix(string name, cv::Mat mat) {
         cout << name << endl;
         for (int i = 0; i < mat.rows; i++) {
@@ -111,7 +142,10 @@ namespace segment {
         cout << endl;
     }
 
-    float angleBetween(const cv::Point v1, const cv::Point v2){
+    /*
+     * angleBetween calculates the angle between two points
+     */
+    float angleBetween(const cv::Point v1, const cv::Point v2) {
         float dy = v1.y - v2.y;
         float dx = v1.x - v2.x;
         float theta = atan(dy/dx);
@@ -119,13 +153,20 @@ namespace segment {
         return theta;
     }
 
+    /*
+     * drawColoredContours draws contours onto the image with randomized colors
+     */
     cv::Mat drawColoredContours(cv::Mat img, vector<vector<cv::Point>> *contours) {
         img = img.clone();
         cv::RNG rng(12345);
         return *drawColoredContours(&img, contours, &rng);
     }
 
-    cv::Mat* drawColoredContours(cv::Mat *img, vector<vector<cv::Point>> *contours, cv::RNG *rng) {
+    /*
+     * drawColoredContours draws contours onto the image with randomized colors
+     * This function takes in a pointer to a matrix and a random number generator (RNG)
+     */
+    cv::Mat *drawColoredContours(cv::Mat *img, vector<vector<cv::Point>> *contours, cv::RNG *rng) {
         for (int j = 0; j < contours->size(); j++) {
             if ((*contours)[j].empty()) {
                 continue;

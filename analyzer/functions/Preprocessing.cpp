@@ -8,9 +8,15 @@
 using namespace std;
 
 namespace segment {
-
-
-
+    /*
+     * startPreprocessingThread is the main function that finds a mask of the clumps of an image
+     * This function takes in a subimage of the image.
+     * Preprocessing runs several algorithms:
+     * 1) Quickshift
+     * 2) Canny Edge Detection
+     * 3) Compute Convex Hulls
+     * 4) Gaussian Mixture Modeling
+     */
     SubImage startProcessingThread(Image *image, SubImage subImage, int kernelsize, int maxDist, int threshold1, int threshold2, int maxGmmIterations) {
         bool debug = true;
         auto start = chrono::high_resolution_clock::now();
@@ -63,12 +69,19 @@ namespace segment {
         return subImage;
     }
 
+    /*
+     * runPreprocessing is the main function that finds a mask of the clumps of the image
+     * This function spawns multiple threads for each subimage that finds the mask of the clumps of the image.
+     */
     cv::Mat runPreprocessing(Image *image, int kernelsize, int maxdist, int threshold1, int threshold2, int maxGmmIterations) {
+        //Number of horizontal and vertical subimages
+        //Total number of subimages is subMatNumX * subMatNumY
         const int subMatNumX = 1;
         const int subMatNumY = 1;
         const int numThreads = 16;
 
         cv::Mat *mat = &image->mat;
+        //Percentage of overlap padding between subimages
         double paddingWidth = 0.30;
         double paddingHeight = 0.30;
         vector<SubImage> subImages = splitMat(mat, subMatNumX, subMatNumY, paddingWidth, paddingHeight);
@@ -76,6 +89,7 @@ namespace segment {
 
         auto start = chrono::high_resolution_clock::now();
 
+        // Below is similar to ClumpThread, but runs on a list of SubImages instead of Clumps
         vector<shared_future<SubImage>> allThreads;
 
         do {
@@ -102,27 +116,23 @@ namespace segment {
 
         } while(allThreads.size() > 0 || subImages.size() > 0);
 
+        // Stich the subimages back together
         cv::Mat verticalMatrices[subMatNumX];
         for (int i = 0; i < subMatNumX; i++) {
             cv::Mat verticalMatrix;
             cv::vconcat(returnMatrixArray[i], subMatNumY, verticalMatrix);
             verticalMatrices[i] = verticalMatrix;
-
         }
-
         cv::Mat fullMat;
         cv::hconcat(verticalMatrices, subMatNumX, fullMat);
 
         double end = std::chrono::duration_cast<std::chrono::microseconds>(
                 chrono::high_resolution_clock::now() - start).count() / 1000000.0;
-        printf("time: %f", end);
+        printf("Preprocessing time: %f", end);
 
         cv::Mat temp;
         cv::threshold(fullMat, temp, 0, 256, CV_THRESH_BINARY);
         image->writeImage("gmmPredictions.png", temp);
-
-        //cv::imshow("fm", fullMat);
-        //cv::waitKey(0);
 
         return fullMat;
     }

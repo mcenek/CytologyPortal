@@ -10,6 +10,9 @@ double getRandomDouble(double x, double y) {
 }
 
 namespace segment {
+    /*
+     * calcMaxRadius calculates the maximum distance from the cell's contour to its geometric center
+     */
     float Cell::calcMaxRadius() {
         float maxDist = 0;
         for (cv::Point p : this->cytoBoundary) {
@@ -25,7 +28,9 @@ namespace segment {
         return this->color;
     }
 
-    // if the nucleusBoundary is defined, compute the center of the nucleus
+    /*
+     * computeNucleusCenter computes the center of the cell's nucleus
+     */
     cv::Point Cell::computeNucleusCenter() {
         if (this->nucleusBoundary.empty())
             cerr << "nucleusBoundary must be defined and present before Cell::computeNucleusCenter() can be run." << "\n";
@@ -41,6 +46,9 @@ namespace segment {
         return this->nucleusCenter;
     }
 
+    /*
+     * generateBoundaryFromMasks generates a cell contour based on the cytoMask instance variable
+     */
     void Cell::generateBoundaryFromMask() {
         vector<vector<cv::Point>> contours;
         cv::findContours(this->cytoMask, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
@@ -58,40 +66,59 @@ namespace segment {
         }
     }
 
+    /*
+     * generateMaskFromBoundary generates a cell's mask based on the cytoBoundary contour instance variable
+     */
     void Cell::generateMaskFromBoundary() {
         this->cytoMask = cv::Mat::zeros(this->clump->boundingRect.height, this->clump->boundingRect.width, CV_8U);
         cv::drawContours(this->cytoMask, vector<vector<cv::Point>>{this->cytoBoundary}, 0, 255, CV_FILLED);
     }
 
+    /*
+     * findBoundingBoxWithNeighbors finds the bounding rectangle of a cell and its neighbors
+     */
     cv::Rect Cell::findBoundingBoxWithNeighbors() {
         cv::Rect boundingBox = cv::boundingRect(this->cytoBoundary);
         for (int i = 0; i < this->neighbors.size(); i++) {
             Cell *neighbor = this->neighbors[i];
             cv::Rect neighborBoundingBox = cv::boundingRect(neighbor->cytoBoundary);
+            //Merge bounding boxes
             boundingBox = boundingBox | neighborBoundingBox;
         }
 
         return boundingBox;
     }
 
+    /*
+     * initializePhi creates the initial mask for phi for the level set method
+     */
     void Cell::initializePhi() {
         this->boundingBox = cv::boundingRect(this->cytoBoundary);
         this->boundingBoxWithNeighbors = this->findBoundingBoxWithNeighbors();
 
+        //Simplify the cyto boundary contour by undoing the bounding box
         vector<cv::Point> initialPhiContour;
         for (cv::Point &point : this->cytoBoundary) {
             cv::Point newPoint = cv::Point(point.x - this->boundingBox.x, point.y - this->boundingBox.y);
             initialPhiContour.push_back(newPoint);
         }
 
+        //Draw the simplified contour onto a mask
         this->phi = cv::Mat::zeros(this->boundingBox.height, this->boundingBox.width, CV_32FC1);
         cv::drawContours(this->phi, vector<vector<cv::Point>>{initialPhiContour}, 0, 1, CV_FILLED);
+
+        //Set values to either -2 or 2 where -2 is inside phi and 2 is outside phi
         this->phi = this->phi * -4 + 2;
 
+        //Get initial area of phi
         this->phiArea = this->getPhiArea();
         this->phiConverged = false;
     }
 
+    /*
+     * getPhi returns phi with the bounding box specified + 10 padding.
+     * Phi is stored without any excess padding in memory
+     */
     cv::Mat Cell::getPhi(cv::Rect bb) {
         int top = this->boundingBox.y - bb.y;
         int bottom = bb.height - this->boundingBox.height - top;
@@ -109,10 +136,18 @@ namespace segment {
         return x;
     }
 
+    /*
+     * getPhi returns phi with the bounding box with neighbors + 10 padding
+     * Phi is stored without any excess padding in memory
+     */
     cv::Mat Cell::getPhi() {
         return getPhi(this->boundingBoxWithNeighbors);
     }
 
+    /*
+     * setPhi takes in a new phi with bounding box with neighbors and undos the bounding box
+     * and stores it in memory
+     */
     void Cell::setPhi(cv::Mat phi) {
         int top = this->boundingBox.y - this->boundingBoxWithNeighbors.y;
         int left = this->boundingBox.x - this->boundingBoxWithNeighbors.x;
@@ -126,7 +161,9 @@ namespace segment {
         this->phi = phi(roi);
     }
 
-
+    /*
+     * getPhiArea returns the area of phi
+     */
     double Cell::getPhiArea() {
         cv::Mat temp;
         cv::threshold(this->phi, temp, 0, 1, cv::THRESH_BINARY_INV);
@@ -142,6 +179,9 @@ namespace segment {
         return area;
     }
 
+    /*
+     * getPhiContour finds the zero contour of phi
+     */
     vector<cv::Point> Cell::getPhiContour() {
         //cv::Rect cropRect(10, 10, this->clump->boundingRect.width, this->clump->boundingRect.height);
         cv::Mat temp = this->phi.clone();
@@ -170,7 +210,9 @@ namespace segment {
         return actualPhiContour;
     }
 
-
+    /*
+     * calcGeometricCenter finds the center of the cell
+     */
     cv::Point Cell::calcGeometricCenter() {
         this->generateMaskFromBoundary();
         cv::Moments m = cv::moments(this->cytoMask, true);
@@ -180,6 +222,9 @@ namespace segment {
         return p;
     }
 
+    /*
+     * calcShapePrior finds the shape prior of the cell
+     */
     cv::Mat Cell::calcShapePrior() {
         this->initializePhi();
         this->calcGeometricCenter();
@@ -187,6 +232,7 @@ namespace segment {
 
         cv::Mat shapePrior = this->phi.clone();
 
+        //Values are -2 or 2 where -2 is inside phi and 2 is outside phi, so we flip the signs
         shapePrior = -shapePrior;
 
         float maxRadius = this->calcMaxRadius();
@@ -194,12 +240,16 @@ namespace segment {
             for (int j = 0; j < shapePrior.cols; j++) { //Assumes a single channel matrix
                 cv::Point point(j, i);
                 float currentValue = shapePrior.at<float>(point);
+                //Inside phi
                 if (currentValue == 2) {
                     float dist = cv::norm(point - geometricCenter) / maxRadius;
                     shapePrior.at<float>(point) = (-2.0 / (1.0 + exp(-1 * 5 * dist)));
                 }
             }
         }
+
+        //Values outside phi are -2, so we add 2 to make it 0
+        //Values inside phi also require adding 2 per the shape prior equation
         shapePrior += 2;
 
         return shapePrior;

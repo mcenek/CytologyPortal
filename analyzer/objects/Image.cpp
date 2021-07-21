@@ -50,6 +50,7 @@ namespace segment {
 
     void Image::writeImage(string name, cv::Mat mat) {
         boost::filesystem::path writePath = getWritePath(name, ".png");
+        boost::filesystem::create_directories(writePath.parent_path());
         cv::imwrite(writePath.string(), mat);
     }
 
@@ -68,6 +69,7 @@ namespace segment {
 
     void Image::writeMatrix(string name, cv::Mat mat) {
         boost::filesystem::path writePath = getWritePath(name, ".yml");
+        boost::filesystem::create_directories(writePath.parent_path());
         cv::FileStorage fs(writePath.string(), cv::FileStorage::WRITE);
         fs << "mat" << mat;
         fs.release();
@@ -88,6 +90,7 @@ namespace segment {
 
     void Image::writeJSON(string name, json &j) {
         boost::filesystem::path writePath = getWritePath(name, ".json");
+        boost::filesystem::create_directories(writePath.parent_path());
         ofstream ofs(writePath.string());
         ofs << /*setw(4) <<*/ j << endl;
     }

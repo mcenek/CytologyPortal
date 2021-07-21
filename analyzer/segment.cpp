@@ -66,6 +66,8 @@ int main (int argc, const char * argv[])
     int eps = 1;
     double dt = 0.5; // timestep
     int steps = 2;
+    
+    
 
     try
     {
@@ -114,15 +116,24 @@ int main (int argc, const char * argv[])
             vm["minCircularity"].as<float>()
         );
 
+
+        
+        
+        
+        
+        
         vector<string> images;
 
-	    string directory = vm["directory"].as<std::string>();
+	    
+        
+        string directory = vm["directory"].as<std::string>();
         string image = vm["image"].as<std::string>();
 
         if (directory.empty() && image.empty()) {
             image = "./images/EDF/EDF000.png";
         }
-
+        //seg.optimizeParameters("./images/EDF/testsinglecell.png","./images/EDF/testsinglecell.png");
+        //seg.optimizeParameters(image,image);
         if (!directory.empty()) {
 
             boost::filesystem::path path(directory);

@@ -281,21 +281,22 @@ namespace segment {
     }
     cv::Mat Segmenter::maskNuclei(cv::Mat image){
             using namespace cv;
-            Mat toReturn;
-            Mat image2;
-            cvtColor(image,  image2, cv::COLOR_BGR2GRAY );
-            double cytoIntesity = 150;
-            double nucleiIntensityThresh = 50;
-            threshold(image2, toReturn, nucleiIntensityThresh, cytoIntesity, 4 );
-            for(int i=0; i <toReturn.rows;i++){
-                    for(int j=0;toReturn.cols;j++){
-                            if(toReturn.at<uchar>(i,j) = 0){
-                                   toReturn.at<uchar>(i,j) = cytoIntesity;
-                            }
-                    }
-            }
+             Mat toReturn;
+        //     Mat image2;
+        //     cvtColor(image,  image2, cv::COLOR_BGR2GRAY );
+        //     double cytoIntesity = 150;
+        //     double nucleiIntensityThresh = 50;
+        //     threshold(image2, toReturn, nucleiIntensityThresh, cytoIntesity, 4 );
+        //     for(int i=0; i <toReturn.rows;i++){
+        //             for(int j=0;toReturn.cols;j++){
+        //                     if(toReturn.at<uchar>(i,j) = 0){
+        //                            toReturn.at<uchar>(i,j) = cytoIntesity;
+        //                     }
+        //             }
+        //     }
 
             //grabCut();
+            
             return toReturn;
     }
 

@@ -1,3 +1,4 @@
+#include <opencv2/imgproc.hpp>
 #include "InitialCellSegmentation.h"
 #include "SegmenterTools.h"
 #include "../objects/ClumpsThread.h"
@@ -5,10 +6,12 @@
 #include <future>
 #include <chrono>
 
+using namespace std;
+
 namespace segment {
     /*
- * getDistance returns the distance between two points
- */
+     * getDistance returns the distance between two points
+     */
     float getDistance(cv::Point &a, cv::Point &b) {
         cv::Point d = a - b;
         return cv::sqrt(d.x*d.x + d.y*d.y);
@@ -169,6 +172,104 @@ namespace segment {
         }
     }
 
+    bool onSubDivBoundary(cv::Point point, int maxWidth, int maxHeight) {
+        return point.x <= 0 ||
+               point.x >= maxWidth ||
+               point.y <= 0 ||
+               point.y >= maxHeight;
+    }
+
+
+    void findNeighbors2(Clump *clump, cv::Subdiv2D &subdiv, unordered_map<int, Cell*> &subDivVertexToCell) {
+        vector<cv::Vec4f> edgeList;
+        subdiv.getEdgeList(edgeList);
+
+        for (cv::Vec4f &edge : edgeList) {
+            cv::Point pointOrg(edge[0], edge[1]);
+            cv::Point pointDst(edge[2], edge[3]);
+
+            if (onSubDivBoundary(pointOrg, clump->boundingRect.width, clump->boundingRect.height) ||
+                onSubDivBoundary(pointDst, clump->boundingRect.width, clump->boundingRect.height)) {
+                continue;
+            }
+
+            int edgeIdx;
+            int vertexOrgIdx;
+            int vertexDstIdx;
+
+            subdiv.locate(pointOrg, edgeIdx, vertexOrgIdx);
+            subdiv.locate(pointDst, edgeIdx, vertexDstIdx);
+
+            Cell* cellOrg = subDivVertexToCell[vertexOrgIdx];
+            Cell* cellDst = subDivVertexToCell[vertexDstIdx];
+
+            cellOrg->neighbors.push_back(cellDst);
+            cellDst->neighbors.push_back(cellOrg);
+        }
+    }
+    /*
+     * associateClumpBoundariesWithCell creates a map of pixels and their associated cell
+     */
+    void associateClumpBoundariesWithCell2(Image *image, Clump *clump, int clumpIdx, bool debug) {
+        cv::Rect rect(0, 0, clump->boundingRect.width, clump->boundingRect.height);
+        cv::Subdiv2D subdiv(rect);
+        unordered_map<int, Cell*> subDivVertexToCell;
+
+        for (int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
+            Cell *cell = &clump->cells[cellIdx];
+            int subDivVertexIdx = subdiv.insert(cell->nucleusCenter);
+            subDivVertexToCell[subDivVertexIdx] = cell;
+        }
+
+        findNeighbors2(clump, subdiv, subDivVertexToCell);
+
+        vector<int> idx;
+        vector<vector<cv::Point2f>> facetList;
+        vector<cv::Point2f> facetCenters;
+        subdiv.getVoronoiFacetList(idx, facetList, facetCenters);
+
+        vector<vector<cv::Point>> facetContours;
+
+        cv::Mat clumpMask = image->gmmPredictions(clump->boundingRect);
+        cv::imshow("clumpMask", clumpMask);
+        cv::waitKey(0);
+
+        //add contour points to closest valid facet list
+        for (int i = 0; i < facetList.size(); i++) {
+
+            vector<cv::Point> facetContour(facetList[i].begin(), facetList[i].end());
+
+            for (int j = 0; j < facetContour.size(); j++) {
+                cv::Point point = facetContour[j];
+                if (onSubDivBoundary(point, clump->boundingRect.width, clump->boundingRect.height)) {
+                    //erase(facetContour.begin() + j);
+                    j--;
+                }
+            }
+            cout << facetList[i] << endl;
+
+            cv::Mat tmp = cv::Mat::zeros(clump->boundingRect.height, clump->boundingRect.width, CV_8U);
+            cv::drawContours(tmp, vector<vector<cv::Point>>{facetContour}, 0, 255, CV_FILLED);
+
+            cv::bitwise_and(tmp, clumpMask, tmp);
+            cv::imshow("tmp", tmp);
+            cv::waitKey(0);
+
+
+            facetContours.push_back(facetContour);
+        }
+
+
+
+
+
+
+
+
+
+
+
+    }
 
     /*
      * associationsToBoundaries converts pixel associations in vector form to contours
@@ -447,6 +548,7 @@ namespace segment {
 
         auto start = chrono::high_resolution_clock::now();
         associateClumpBoundariesWithCell(image, clump, clumpIdx, debug);
+
         auto end = std::chrono::duration_cast<std::chrono::microseconds>(
                 chrono::high_resolution_clock::now() - start).count() / 1000000.0;
         image->log("Clump %d, done associate clump boundaries with cells, time: %f\n", clumpIdx, end);
@@ -603,6 +705,7 @@ namespace segment {
 
         //Function called when thread is started
         function<void(Clump *, int)> threadFunction = [&image, &debug, &rng, &outimg](Clump *clump, int clumpIdx) {
+            associateClumpBoundariesWithCell2(image, clump, clumpIdx, debug);
             if (clump->initCytoBoundariesLoaded) {
                 image->log("Loaded clump %u initial cell boundaries from file\n", clumpIdx);
             } else {

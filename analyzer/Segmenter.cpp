@@ -8,6 +8,7 @@
 #include "functions/NucleiDetection.h"
 #include "functions/OverlappingCellSegmentation.h"
 #include "functions/Preprocessing.h"
+#include "functions/Export.h"
 
 extern "C" {
 #include "vl/quickshift.h"
@@ -19,7 +20,8 @@ namespace segment {
     // Constructor
     Segmenter::Segmenter(int kernelsize, int maxdist, int thres1, int thres2, int maxGmmIterations,
                          int minAreaThreshold, int delta, int minArea, int maxArea, double maxVariation,
-                         double minDiversity, double minCircularity) {
+                         double minDiversity, double minCircularity, double dt, double epsilon, double mu,
+                         double kappa, double chi) {
         setCommonValues();
         this->kernelsize = kernelsize;
         this->maxdist = maxdist;
@@ -33,6 +35,11 @@ namespace segment {
         this->maxVariation = maxVariation;
         this->minDiversity = minDiversity;
         this->minCircularity = minCircularity;
+        this->dt = dt;
+        this->epsilon = epsilon;
+        this->mu = mu;
+        this->kappa = kappa;
+        this->chi = chi;
     }
 
     // Constructor helper
@@ -73,6 +80,7 @@ namespace segment {
             image.writeImage("gmmPredictions.png", outimg);
             outimg.release();
         }
+        image.gmmPredictions = gmmPredictions;
 
         end = std::chrono::duration_cast<std::chrono::microseconds>(
                 chrono::high_resolution_clock::now() - start).count() / 1000000.0;
@@ -80,12 +88,6 @@ namespace segment {
 
         start = chrono::high_resolution_clock::now();
         if (debug) image.log("Beginning GMM Output post processing...\n");
-
-
-
-
-
-
 
         // Finds the clump boundaries using the gmmPredictions mask
         vector <vector<cv::Point>> clumpBoundaries = findFinalClumpBoundaries(gmmPredictions, minAreaThreshold);
@@ -136,6 +138,7 @@ namespace segment {
         // Estimates the initial cell boundaries of the cell by associating each point inside the
         // clump with the nearest nucleus. Then overlapping region is extrapolated with an ellipse.
         outimg = runInitialCellSegmentation(&image, threshold1, threshold2, debug);
+        image.gmmPredictions.release();
 
         // Display and save initial cell boundaries to png file
         image.writeImage("initial_cell_boundaries.png", outimg);
@@ -154,7 +157,7 @@ namespace segment {
 
         // Use level sets to find the actual cell boundaries by shrinking the initial cell
         // boundaries' overlapping extrapolated contour (the ellipse) until the level set converges.
-        runOverlappingSegmentation(&image);
+        runOverlappingSegmentation(&image, dt, epsilon, mu, kappa, chi);
 
         end = std::chrono::duration_cast<std::chrono::microseconds>(
                 chrono::high_resolution_clock::now() - start).count() / 1000000.0;
@@ -172,6 +175,8 @@ namespace segment {
         image.writeImage("cell_boundaries.png", outimg);
         outimg.release();
 
+
+        exportResults(&image);
 
         start = chrono::high_resolution_clock::now();
         if (debug) image.log("Beginning segmentation evaluation...\n");

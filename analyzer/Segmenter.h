@@ -20,10 +20,15 @@ namespace segment {
         // GMM post processing params
         double minAreaThreshold;
         // MSER params
-        int delta, minArea, maxArea; //minArea was 120
+        int delta, minArea, maxArea;
         double maxVariation, minDiversity;
         double minCircularity;
-
+        // Cell segmentation params
+        double dt;
+        double epsilon;
+        double mu;
+        double kappa;
+        double chi;
 
     private:
         // internal attributes
@@ -35,7 +40,8 @@ namespace segment {
 
     public:
         Segmenter(int kernelsize, int maxdist, int thres1, int thres2, int maxGmmIterations, int minAreaThreshold,
-                  int delta, int minArea, int maxArea, double maxVariation, double minDiversity, double minCircularity);
+                  int delta, int minArea, int maxArea, double maxVariation, double minDiversity, double minCircularity,
+                  double dt, double epsilon, double mu, double kappa, double chi);
 
         void setCommonValues();
 

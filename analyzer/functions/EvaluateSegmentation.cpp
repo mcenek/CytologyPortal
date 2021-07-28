@@ -8,6 +8,9 @@ using namespace std;
 
 namespace segment {
 
+    /*
+     * calcContoursArea computes the total area inside each contour in the vector
+     */
     double calcContoursArea(vector<vector<cv::Point>> contours) {
         double area = 0;
         for (vector<cv::Point> contour : contours) {
@@ -16,18 +19,19 @@ namespace segment {
         return area;
     }
 
+    /*
+     * calcDice computes the dice coefficient between a mask of the estimated and ground truth matrices
+     * Does not factor in both foreground and background dice coefficients.
+     */
     double calcDice(cv::Mat estimated, cv::Mat groundTruth) {
         vector<vector<cv::Point>> estimatedContours;
         vector<vector<cv::Point>> groundTruthContours;
 
-
         cv::findContours(estimated, estimatedContours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-
         cv::findContours(groundTruth, groundTruthContours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
 
         cv::Mat overlap;
         cv::bitwise_and(estimated, groundTruth, overlap);
-
 
         vector<vector<cv::Point>> overlapContours;
         cv::findContours(overlap, overlapContours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
@@ -40,6 +44,10 @@ namespace segment {
         return dice;
     }
 
+    /*
+     * calcTotalDice computes the dice coefficient between a mask of the estimated and ground truth matrices
+     * Factors in both foreground and background dice coefficients.
+     */
     double calcTotalDice(cv::Mat estimated, cv::Mat groundTruth) {
         estimated = estimated.clone();
         groundTruth = groundTruth.clone();
@@ -59,6 +67,9 @@ namespace segment {
         return totalDice;
     }
 
+    /*
+     * generateMasks converts the list of contours to a list of masks with the specified row and columns
+     */
     vector<cv::Mat> generateMasks(int rows, int cols, vector<vector<cv::Point>> contours) {
         vector<cv::Mat> masks;
         for (vector<cv::Point> contour : contours) {
@@ -70,6 +81,9 @@ namespace segment {
         return masks;
     }
 
+    /*
+     * findMaxDiceLocation finds the pair of masks (i, j) with the highest dice coefficent
+     */
     int* findMaxDiceLocation(vector<vector<double>> allDice) {
         double maxDice = 0;
         int *location = new int[2];
@@ -88,11 +102,14 @@ namespace segment {
         return location;
     }
 
+    /*
+     * evaluateSegmentation returns the average dice coeffient of all cells in the image
+     */
     double evaluateSegmentation(Image *image) {
         vector<cv::Mat> estimatedMasks;
         vector<cv::Mat> groundTruthMasks;
 
-
+        //Load calculated masks from memory
         for (int i = 0; i < image->clumps.size(); i++) {
             Clump *clump = &image->clumps[i];
             vector<vector<cv::Point>> cellContours = clump->getFinalCellContours();
@@ -103,6 +120,7 @@ namespace segment {
 
         }
 
+        //Load ground truths from file
         boost::filesystem::path gtLocation(image->path.parent_path());
         gtLocation /= image->path.stem();
         gtLocation += "_GT";
@@ -110,7 +128,7 @@ namespace segment {
         gtLocation += "_CytoGT";
 
         boost::filesystem::directory_iterator iter(gtLocation), eod;
-        BOOST_FOREACH(boost::filesystem::path const& file, make_pair(iter, eod)){
+        BOOST_FOREACH(boost::filesystem::path const& file, make_pair(iter, eod)) {
             if (is_regular_file(file)) {
                 if (file.has_extension()) {
                     if (file.extension().string() == ".png") {
@@ -123,10 +141,8 @@ namespace segment {
 
         vector<vector<double>> allDice;
         int associations[groundTruthMasks.size()];
-
         for (int i = 0; i < groundTruthMasks.size(); i++) {
             cv::Mat *groundTruthMask = &groundTruthMasks[i];
-
             allDice.push_back(vector<double>());
             for (int j = 0; j < estimatedMasks.size(); j++) {
                 cv::Mat *estimatedMask = &estimatedMasks[j];

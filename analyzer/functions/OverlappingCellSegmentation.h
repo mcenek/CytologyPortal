@@ -15,9 +15,10 @@ namespace segment {
 
     bool clumpHasSingleCell(Clump *clump);
 
-    void startOverlappingCellSegmentationThread(Image *image, Clump *clump, int clumpIdx);
+    void startOverlappingCellSegmentationThread(Image *image, Clump *clump, int clumpIdx,
+                                                double dt, double epsilon, double mu, double kappa, double chi);
 
-    void runOverlappingSegmentation(Image *image);
+    void runOverlappingSegmentation(Image *image, double dt, double epsilon, double mu, double kappa, double chi);
 
     void updatePhi(Cell *cellI, Clump *clump, double dt, double epsilon, double mu, double kappa, double chi);
 

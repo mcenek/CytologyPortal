@@ -57,21 +57,23 @@ int main (int argc, const char * argv[])
     int delta = 3, minArea = 120, maxArea = 600;
     double maxVariation = 0.3, minDiversity = 0.25;
     double minCircularity = 0.5;
-    // Cell segmentation params - TODO: reference these
-    double mi = 0.2;
-    double eta = 0.00000001;
-    double ni = FLT_MIN;
-    int lambda1 = 1;
-    int lambda2 = 1;
-    int eps = 1;
-    double dt = 0.5; // timestep
-    int steps = 2;
+    // Cell segmentation params
+    double dt = 5; //Time step
+    double epsilon = 1.5; //Pixel spacing
+    double mu = 0.04; //Contour length weighting parameter
+    double kappa = 13;
+    double chi = 3;
 
     try
     {
         options_description desc{"Options"};
         desc.add_options()
           ("help,h", "Help screen")
+          ("dt", value<float>()->default_value(dt), "Timestep")
+          ("epsilon", value<float>()->default_value(epsilon), "Pixel spacing")
+          ("mu", value<float>()->default_value(mu), "Contour length weight")
+          ("kappa", value<float>()->default_value(kappa), "Unary term weight")
+          ("chi", value<float>()->default_value(chi), "Binary term weight")
           ("maxVariation", value<float>()->default_value(maxVariation), "Max variation")
           ("minDiversity", value<float>()->default_value(minDiversity), "Min diversity")
           ("minCircularity", value<float>()->default_value(minCircularity), "Min circularity")
@@ -111,7 +113,12 @@ int main (int argc, const char * argv[])
             vm["maxArea"].as<int>(),
             vm["maxVariation"].as<float>(),
             vm["minDiversity"].as<float>(),
-            vm["minCircularity"].as<float>()
+            vm["minCircularity"].as<float>(),
+            vm["dt"].as<float>(),
+            vm["epsilon"].as<float>(),
+            vm["mu"].as<float>(),
+            vm["kappa"].as<float>(),
+            vm["chi"].as<float>()
         );
 
         vector<string> images;

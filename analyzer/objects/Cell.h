@@ -30,7 +30,7 @@ namespace segment {
         double phiArea;
         double nucleusArea;
         bool phiConverged;
-
+        bool boundaryCell;
 
         float calcMaxRadius(); //Used for shape priors
         cv::Vec3b generateColor();

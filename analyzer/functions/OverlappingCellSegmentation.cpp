@@ -4,17 +4,23 @@
 
 namespace segment {
 
+    /*
+     * isConverged returns true if a cell's phi has converged and false otherwise
+     */
     bool isConverged(Cell *cellI) {
         double newPhiArea = cellI->getPhiArea();
         // If less than 50 pixels have changed, then it is considered converged
         if (abs(cellI->phiArea - newPhiArea) < 50) {
             cellI->phiConverged = true;
-
         }
         cellI->phiArea = newPhiArea;
         return cellI->phiConverged;
     }
 
+    /*
+     * clumpHasSingleCell returns true if there is only one cell in the clump.
+     * If so, then it is marked as converged.
+     */
     bool clumpHasSingleCell(Clump *clump) {
         if (clump->cells.size() == 1) {
             Cell *cellI = &clump->cells[0];
@@ -26,6 +32,9 @@ namespace segment {
         return false;
     }
 
+    /*
+     * padMatrix adds a padding of 10 to all sides of the specified matrix with the specified value / intensity
+     */
     cv::Mat padMatrix(cv::Mat mat, cv::Scalar value) {
         int padding = 10;
         cv::Mat paddedMatrix;
@@ -33,16 +42,16 @@ namespace segment {
         return paddedMatrix;
     }
 
-    void startOverlappingCellSegmentationThread(Image *image, Clump *clump, int clumpIdx) {
-        //Initialize set up parameters
-        double dt = 5; //Time step
-        double epsilon = 1.5; //Pixel spacing
-        double mu = 0.04; //Contour length weighting parameter
-        double kappa = 13;
-        double chi = 3;
-
+    /*
+     * startOverlappingCellSegmentationThread is the main function that finds the final cell boundaries on a clump
+     * We run the Distance Regulated Level Set Evolution (DRLSE) Algortithm.
+     * We check every 50 loops or iterations for convergence
+     */
+    void startOverlappingCellSegmentationThread(Image *image, Clump *clump, int clumpIdx,
+                                                double dt, double epsilon, double mu, double kappa, double chi) {
         int cellsConverged = 0;
 
+        // Mark as converged if clump only has one cell
         if (clumpHasSingleCell(clump)) cellsConverged = clump->cells.size();
 
         int i = 0;
@@ -54,12 +63,14 @@ namespace segment {
                     continue;
                 }
 
-
+                // Update phi per DRLSE
                 drlse::updatePhi(cellI, clump, dt, epsilon, mu, kappa, chi);
 
                 cout << "LSF Iteration " << i << ": Clump " << clumpIdx << ", Cell " << cellIdxI << endl;
 
+                // Check every 50 iterations if the cell has converged
                 if (i != 0 && i % 50 == 0) {
+                    // Clump has converged or iterations have exceeded 1000
                     if (isConverged(cellI) || i >= 1000) {
                         cellsConverged++;
                         cellI->finalContour = cellI->getPhiContour();
@@ -75,7 +86,10 @@ namespace segment {
     }
 
 
-    void saveFinalCellBoundaries(json &finalCellBoundaries, Image *image, Clump *clump, int clumpIdx) {
+    /*
+     * saveFinalCellBoundaries saves each cell's final boundaries as contours to a JSON file
+     */
+    void saveFinalCellBoundaries(json &finalCellBoundaries, json &nucleiCytoRatios, Image *image, Clump *clump, int clumpIdx) {
         for (int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
             Cell *cell = &(clump->cells[cellIdx]);
             json finalCellBoundary;
@@ -83,13 +97,19 @@ namespace segment {
                 finalCellBoundary.push_back({point.x, point.y});
             }
             finalCellBoundaries[clumpIdx][cellIdx] = finalCellBoundary;
+            nucleiCytoRatios[clumpIdx][cellIdx] = cell->nucleusArea / cell->phiArea;
         }
 
-        if (clumpIdx % 1 == 0 || clump->cells.size() > 3000) {
+        //Write to JSON file every 100 clumps or when the clump is big
+        if (clumpIdx % 100 == 0 || clump->cells.size() > 3000) {
             image->writeJSON("finalCellBoundaries", finalCellBoundaries);
+            image->writeJSON("nucleiCytoRatios", nucleiCytoRatios);
         }
     }
 
+    /*
+     * loadInitialCellBoundaries loads final cell boundaries from a JSON file into memory
+     */
     void loadFinalCellBoundaries(json &finalCellBoundaries, Image *image, vector<Clump> *clumps) {
         finalCellBoundaries = image->loadJSON("finalCellBoundaries");
         for (int clumpIdx = 0; clumpIdx < finalCellBoundaries.size(); clumpIdx++) {
@@ -110,6 +130,7 @@ namespace segment {
                 }
                 Cell *cell = &clump->cells[cellIdx];
                 cell->finalContour = contour;
+                cell->phiArea = cv::contourArea(contour);
                 // Clump cyto boundaries are fully loaded
                 if (cellIdx == jsonNumberCells - 1) {
                     clump->finalCellContoursLoaded = true;
@@ -120,19 +141,19 @@ namespace segment {
     }
     
     /*
-       DRLSE Overlapping Segmentation (Distance Map)
-       https://cs.adelaide.edu.au/~zhi/publications/paper_TIP_Jan04_2015_Finalised_two_columns.pdf
-       http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.231.9150&rep=rep1&type=pdf
+     * runOverlappingSegmentation is the main function that finds the final cell boundaries for the image
+     * This function spawns multiple threads for each clump that finds the final cell boundaries.
      */
-    void runOverlappingSegmentation(Image *image) {
+    void runOverlappingSegmentation(Image *image, double dt, double epsilon, double mu, double kappa, double chi) {
         vector<Clump> *clumps = &image->clumps;
 
         json finalCellBoundaries;
+        json nucleiCytoRatios;
 
         // Load final cell boundaries from finalCellBoundaries.json if it exists
         loadFinalCellBoundaries(finalCellBoundaries, image, clumps);
 
-        function<void(Clump *, int)> threadFunction = [&image](Clump *clump, int clumpIdx) {
+        function<void(Clump *, int)> threadFunction = [&image, &dt, &epsilon, &mu, &kappa, &chi](Clump *clump, int clumpIdx) {
             // Do not run the level set algorithm if the final contours have been loaded from file
             if (clump->finalCellContoursLoaded) {
                 image->log("Loaded clump %u final cell boundaries from file\n", clumpIdx);
@@ -145,27 +166,17 @@ namespace segment {
             clump->edgeEnforcer = drlse::calcEdgeEnforcer(padMatrix(clump->extract(), cv::Scalar(255, 255, 255)));
             clump->clumpPrior = padMatrix(clump->calcClumpPrior(), cv::Scalar(255, 255, 255));
 
-            /*
-            for (unsigned int cellIdxI = 0; cellIdxI < clump->cells.size(); cellIdxI++) {
-                Cell *cellI = &clump->cells[cellIdxI];
-                //cellI->initializePhi();
-                //cellI->phi = padMatrix(cellI->phi, 2);
-
-            }
-             */
-
-
             // Run the level set algorithm
-            startOverlappingCellSegmentationThread(image, clump, clumpIdx);
+            startOverlappingCellSegmentationThread(image, clump, clumpIdx, dt, epsilon, mu, kappa, chi);
         };
 
-        function<void(Clump *, int)> threadDoneFunction = [&finalCellBoundaries, &image](Clump *clump, int clumpIdx) {
+        function<void(Clump *, int)> threadDoneFunction = [&finalCellBoundaries, &nucleiCytoRatios, &image](Clump *clump, int clumpIdx) {
             if (!clump->finalCellContoursLoaded) {
-                saveFinalCellBoundaries(finalCellBoundaries, image, clump, clumpIdx);
+                saveFinalCellBoundaries(finalCellBoundaries, nucleiCytoRatios, image, clump, clumpIdx);
             }
         };
 
-        int maxThreads = 16;
+        int maxThreads = 8;
         // Spawns threads that run the thread function for each clump
         ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 

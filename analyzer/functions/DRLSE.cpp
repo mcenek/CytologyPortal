@@ -8,21 +8,30 @@ using namespace std;
 namespace segment {
     namespace drlse {
 
+        /*
+         * updatePhi evolves the level set front, phi, using the modified DRLSE algorithm
+         */
         void updatePhi(Cell *cellI, Clump *clump, double dt, double epsilon, double mu, double kappa, double chi) {
+            //getPhi returns phi that is cropped to a bounding box of phi and its neighbors + padding
             cv::Mat phi = cellI->getPhi();
 
+            //Get the bounding box of phi and its neighbors
             cv::Rect boundingBoxWithNeighbors = cellI->boundingBoxWithNeighbors;
+            //Fix dimensions to account for extra padding (from the getPhi function)
             boundingBoxWithNeighbors.width = phi.cols;
             boundingBoxWithNeighbors.height = phi.rows;
 
+            //Crop edge enforcer to a bounding box of phi and its neighbors + padding
             cv::Mat edgeEnforcer = clump->edgeEnforcer.clone();
             edgeEnforcer = edgeEnforcer(boundingBoxWithNeighbors);
 
+            //Crop clump prior to a bounding box of phi and its neighbors + padding
             cv::Mat clumpPrior = clump->clumpPrior.clone();
             clumpPrior = clumpPrior(boundingBoxWithNeighbors);
 
+            //Perform the modified DRLSE algorithm
             vector <cv::Mat> gradient = calcGradient(phi);
-            cv::Mat regularizer = calcSignedDistanceReg(phi);
+            cv::Mat regularizer = calcSignedDistanceReg(phi, gradient);
             cv::Mat dirac = calcDiracDelta(phi, epsilon);
             cv::Mat gac = calcGeodesicTerm(dirac, gradient, edgeEnforcer, clumpPrior);
             cv::Mat binaryEnergy = calcAllBinaryEnergy(cellI, edgeEnforcer, clumpPrior, phi, dirac);
@@ -36,6 +45,9 @@ namespace segment {
             cellI->setPhi(phi);
         }
 
+        /*
+         * calcAllBinaryEnergy finds the binary energy with all of a cell's neighbors
+         */
         cv::Mat calcAllBinaryEnergy(Cell *cellI, cv::Mat edgeEnforcer, cv::Mat clumpPrior, cv::Mat phiI, cv::Mat dirac) {
             cv::Mat binaryEnergy = cv::Mat::zeros(phiI.rows, phiI.cols, CV_32FC1);
             for (unsigned int cellIdxJ = 0; cellIdxJ < cellI->neighbors.size(); cellIdxJ++) {
@@ -45,24 +57,32 @@ namespace segment {
                     continue;
                 }
 
+                //Get the neighbor cellJ's phi with the same bounding box as cellI's phi
+                //This is possible since phiI's bounding box is of phiI and its neighbors
                 cv::Rect boundingBoxWithNeighbors = cellI->boundingBoxWithNeighbors;
                 cv::Mat phiJ = cellJ->getPhi(boundingBoxWithNeighbors);
-
                 binaryEnergy += calcBinaryEnergy(phiJ, edgeEnforcer, clumpPrior, dirac);
             }
             return binaryEnergy;
         }
 
+        /*
+         * calcBinaryEnergy finds the binary energy between two phis
+         */
         cv::Mat calcBinaryEnergy(cv::Mat mat, cv::Mat edgeEnforcer, cv::Mat clumpPrior, cv::Mat dirac) {
             cv::Mat overAreaTerm;
-            cv::Mat heaviside = calcHeaviside(mat);
+            cv::Mat heaviside = calcHeavisideInv(mat);
             overAreaTerm = clumpPrior.mul(edgeEnforcer);
             overAreaTerm = overAreaTerm.mul(dirac);
             overAreaTerm = overAreaTerm.mul(heaviside);
             return overAreaTerm;
         }
 
+        /*
+         * calcCurvatureXY finds the X and Y curvature components of a gradient.
+         */
         vector <cv::Mat> calcCurvatureXY(vector <cv::Mat> gradient) {
+            //Small number is used to avoid division by 0
             double smallNumber = 1e-10;
             cv::Mat gradientX = getGradientX(gradient);
             cv::Mat gradientY = getGradientY(gradient);
@@ -73,41 +93,45 @@ namespace segment {
             return {Nx, Ny};
         }
 
+        /*
+         * calcDiracDelta finds the dirac delta of a matrix with the specified sigma
+         */
         cv::Mat calcDiracDelta(cv::Mat mat, double sigma) {
-            int rows = mat.rows;
-            int cols = mat.cols;
-
-            cv::Mat f = cv::Mat(rows, cols, CV_32FC1);
-            cv::Mat b = cv::Mat(rows, cols, CV_32FC1);
-
-            for (int i = 0; i < rows; i++) {
-                for (int j = 0; j < cols; j++) {
-                    float value = mat.at<float>(i, j);
-                    //f=(1/2/sigma)*(1+cos(pi*x/sigma));
-                    f.at<float>(i, j) = (1.0 / 2.0 / sigma) * (1 + cos(M_PI * value / sigma));
-
-                    //(x<=sigma) & (x>=-sigma);
-                    b.at<float>(i, j) = int(value <= sigma && value >= -sigma);
+            cv::Mat diracDelta = cv::Mat(mat.rows, mat.cols, CV_32FC1);
+            for (int i = 0; i < mat.rows; i++) {
+                float *row = mat.ptr<float>(i);
+                float *diracDeltaRow = diracDelta.ptr<float>(i);
+                for (int j = 0; j < mat.cols; j++) {
+                    float value = row[j];
+                    if (value <= sigma && value >= -sigma) {
+                        diracDeltaRow[j] = (1.0 / 2.0 / sigma) * (1 + cos(M_PI * value / sigma));
+                    } else {
+                        diracDeltaRow[j] = 0;
+                    }
                 }
             }
-            cv::multiply(f, b, f);
-            return f;
+            return diracDelta;
         }
 
 
-
+        /*
+         * calcEdgeEnforcer finds the edge enforcer of a matrix
+         * g = 1/(1+f) where f is the magnitude of the gradient
+         * of the gaussian convolution of the matrix
+         */
         cv::Mat calcEdgeEnforcer(cv::Mat mat) {
             mat = mat.clone();
             cv::cvtColor(mat, mat, cv::COLOR_BGR2GRAY);
             mat.convertTo(mat, CV_32FC1);
 
-            //G=fspecial('gaussian',15,sigma)
+            //Find the gaussian kernel of kernel size 15 and sigma 1.5
             cv::Mat gaussianKernel = cv::getGaussianKernel(15, 1.5, CV_32FC1);
+            //Multiply the gaussianKernel with its transpose
             cv::mulTransposed(gaussianKernel, gaussianKernel, false);
-            //Img_smooth=conv2(Img,G,'same')
+            //Smooth the gaussian kernel with gradient convolution
             cv::Mat gaussian = conv2(mat, gaussianKernel, "same");
-            //[Ix,Iy]=gradient(Img_smooth)
-            vector <cv::Mat> gaussianGradient = calcGradient(gaussian);
+            //Find the gradient of the gaussian
+            vector<cv::Mat> gaussianGradient = calcGradient(gaussian);
             cv::Mat gaussianGradientX = getGradientX(gaussianGradient);
             cv::Mat gaussianGradientY = getGradientY(gaussianGradient);
             //f=Ix.^2+Iy.^2
@@ -120,10 +144,12 @@ namespace segment {
             return edgeEnforcer;
         }
 
-        //A unary LSF energy term, following the equation - κδε(φi)div(hCg∇φi|∇φi|)
+        /*
+         * A unary LSF energy term, following the equation - κδε(φi)div(hCg∇φi|∇φi|)
+         */
         cv::Mat calcGeodesicTerm(cv::Mat dirac, vector <cv::Mat> gradient, cv::Mat edgeEnforcer, cv::Mat clumpPrior) {
             cv::Mat distPair = edgeEnforcer.mul(clumpPrior);
-            vector <cv::Mat> distPairGradient = calcGradient(distPair);
+            vector<cv::Mat> distPairGradient = calcGradient(distPair);
 
             cv::Mat vxd = getGradientX(distPairGradient);
             cv::Mat vyd = getGradientY(distPairGradient);
@@ -136,108 +162,66 @@ namespace segment {
             return dirac.mul(vxd.mul(Nx) + vyd.mul(Ny)) + dirac.mul(clumpPrior).mul(edgeEnforcer).mul(curvature);
         }
 
-        cv::Mat calcHeaviside(cv::Mat mat) {
-            cv::Mat heaviside = mat.clone();
-            for (int i = 0; i < heaviside.rows; i++) {
-                float *row = heaviside.ptr<float>(i);
-                for (int j = 0; j < heaviside.cols; j++) {
+        /*
+         * calcHeavisideInv finds the inverse of the heaviside of the specified matrix
+         * For each pixel:
+         *   Set to 0 when pixel > 0
+         *   Set to 1 otherwise
+         */
+        cv::Mat calcHeavisideInv(cv::Mat mat) {
+            cv::Mat heavisideInv = cv::Mat(mat.rows, mat.cols, CV_32FC1);
+            for (int i = 0; i < heavisideInv.rows; i++) {
+                float *row = mat.ptr<float>(i);
+                float *heavisideInvRow = heavisideInv.ptr<float>(i);
+                for (int j = 0; j < heavisideInv.cols; j++) {
                     float value = row[j];
-                    if (value <= 0) row[j] = 1;
-                    else row[j] = 0;
+                    if (value > 0) heavisideInvRow[j] = 0;
+                    else heavisideInvRow[j] = 1;
                 }
             }
-
-            return heaviside;
+            return heavisideInv;
         }
 
-        //Applies the normalized derivative of the potential function ......
-        cv::Mat calcPotential(cv::Mat gradientMagnitude) {
-            int rows = gradientMagnitude.rows;
-            int cols = gradientMagnitude.cols;
-
-            cv::Mat a = cv::Mat(rows, cols, CV_32FC1);
-            cv::Mat b = cv::Mat(rows, cols, CV_32FC1);
-            cv::Mat c = cv::Mat(rows, cols, CV_32FC1);
-
-            for (int i = 0; i < rows; i++) {
-                for (int j = 0; j < cols; j++) {
-                    float value = gradientMagnitude.at<float>(i, j);
-                    //a = (s>=0) & (s<=1)
-                    a.at<float>(i, j) = int(value >= 0 && value <= 1);
-                    //b = (s>1)
-                    b.at<float>(i, j) = int(value > 1);
-                    //c = sin(2*pi*s)
-                    c.at<float>(i, j) = sin(2 * M_PI * value);
-                }
-            }
-
-            cv::Mat d, e;
-            //d = a.*sin(2*pi*s)
-            cv::multiply(a, c, d);
-            //e = b.*(s-1)
-            cv::multiply(b, gradientMagnitude - 1, e);
-
-            //return a.*sin(2*pi*s)/(2*pi)+b.*(s-1)
-            return c / (2 * M_PI) + e;
-
-        }
-
-        //A unary LSF energy term, following the equation - μdiv(dp(|∇φi|)∇φi)
-        cv::Mat calcSignedDistanceReg(cv::Mat mat) {
-            vector <cv::Mat> gradient = calcGradient(mat);
+        /*
+         * calcSignedDistanceReg is a unary LSF energy term, following the equation - μdiv(dp(|∇φi|)∇φi)
+         */
+        cv::Mat calcSignedDistanceReg(cv::Mat mat, vector<cv::Mat> gradient) {
             cv::Mat gradientX = getGradientX(gradient);
             cv::Mat gradientY = getGradientY(gradient);
             cv::Mat gradientMagnitude = calcMagnitude(gradientX, gradientY);
 
-            cv::Mat potential = calcPotential(gradientMagnitude);
-            int rows = gradientMagnitude.rows;
-            int cols = gradientMagnitude.cols;
+            cv::Mat potential = cv::Mat(mat.rows, mat.cols, CV_32FC1);
+            cv::Mat divX = cv::Mat(mat.rows, mat.cols, CV_32FC1);
+            cv::Mat divY = cv::Mat(mat.rows, mat.cols, CV_32FC1);
 
-            cv::Mat a = cv::Mat(rows, cols, CV_32FC1);
-            cv::Mat b = cv::Mat(rows, cols, CV_32FC1);
-            cv::Mat c = cv::Mat(rows, cols, CV_32FC1);
-            cv::Mat d = cv::Mat(rows, cols, CV_32FC1);
-
-            for (int i = 0; i < rows; i++) {
-                for (int j = 0; j < cols; j++) {
-                    float potentialValue = potential.at<float>(i, j);
-                    float gradientMagnitudeValue = gradientMagnitude.at<float>(i, j);
-
-                    //a = (ps~=0)
-                    a.at<float>(i, j) = int(potentialValue != 0);
-                    //b = (ps==0)
-                    b.at<float>(i, j) = int(potentialValue == 0);
-
-                    //c = (s~=0)
-                    c.at<float>(i, j) = int(gradientMagnitudeValue != 0);
-                    //d = (s==0)
-                    d.at<float>(i, j) = int(gradientMagnitudeValue == 0);
+            for (int i = 0; i < potential.rows; i++) {
+                float *gradientXRow = gradientX.ptr<float>(i);
+                float *gradientYRow = gradientY.ptr<float>(i);
+                float *gradMagRow = gradientMagnitude.ptr<float>(i);
+                float *potentialRow = potential.ptr<float>(i);
+                float *divXRow = divX.ptr<float>(i);
+                float *divYRow = divY.ptr<float>(i);
+                for (int j = 0; j < potential.cols; j++) {
+                    float gradientMag = gradMagRow[j];
+                    if (gradientMag >= 0 && gradientMag <= 1) {
+                        potentialRow[j] = sin(2 * M_PI * gradientMag) / (2 * M_PI);
+                    } else if (gradientMag > 1) {
+                        potentialRow[j] = gradientMag - 1;
+                    } else {
+                        potentialRow[j] = 0;
+                    }
+                    float potential = potentialRow[j];
+                    float dps = ((potential != 0) ? potential : 1) / ((gradientMag != 0) ? gradientMag : 1);
+                    divXRow[j] = dps * gradientXRow[j] - gradientXRow[j];
+                    divYRow[j] = dps * gradientYRow[j] - gradientYRow[j];
                 }
             }
-
-            //a = (ps~=0).*ps
-            cv::multiply(a, potential, a);
-            //a = (ps~=0).*ps+(ps==0)
-            a = a + b;
-
-            //c = (s~=0).*s
-            cv::multiply(c, gradientMagnitude, c);
-            //c = (s~=0).*s+(s==0)
-            c = c + d;
-
-            cv::Mat dps;
-            //dps=((ps~=0).*ps+(ps==0))./((s~=0).*s+(s==0));
-            cv::divide(a, c, dps);
-
-            //a = dps.*phi_x
-            cv::multiply(dps, gradientX, a);
-            //b = dps.*phi_y
-            cv::multiply(dps, gradientY, b);
-
-            //f = div(dps.*phi_x - phi_x, dps.*phi_y - phi_y) + 4*del2(phi);
-            return calcDivergence(a - gradientX, b - gradientY) + 4 * del2(mat);
+            return calcDivergence(divX, divY) + 4 * del2(mat);
         }
 
+        /*
+         * conv2 implements the MATLAB conv2 which finds the convolution of a matrix
+         */
         cv::Mat conv2(const cv::Mat &input, const cv::Mat &kernel, const char *shape) {
             cv::Mat flipped_kernel;
             cv::flip(kernel, flipped_kernel, -1);
@@ -262,6 +246,10 @@ namespace segment {
             return result(region);
         }
 
+        /*
+         * del2 implements the MATLAB del2 function which finds
+         * the discrete approximation of the  laplacian of a matrix
+         */
         cv::Mat del2(cv::Mat mat) {
             int rows = mat.rows;
             int cols = mat.cols;
@@ -349,52 +337,6 @@ namespace segment {
                                          2 * mat.at<float>(x, y)) / 4;
 
             return laplacian;
-        }
-
-        //Returns the original matrix as a 1 channel CV_32F
-        cv::Mat ensureMatrixType(cv::Mat matrix) {
-            cv::Mat tmpMatrix = matrix.clone();
-            if (tmpMatrix.channels() >= 3) cv::cvtColor(tmpMatrix, tmpMatrix, CV_BGR2GRAY, 1);
-            if (tmpMatrix.type() != CV_32F) tmpMatrix.convertTo(tmpMatrix, CV_32F, 1.0 / 255);
-            return tmpMatrix;
-        }
-
-        //find biggest contour instead, moe to segtools
-        vector<vector<cv::Point>> getContours(cv::Mat mat) {
-            mat.convertTo(mat, CV_8UC1, 255);
-            vector<vector<cv::Point>> contours;
-            cv::findContours(mat, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-            //cv::drawContours(contourMat, contours, 0, cv::Scalar(0.));
-            return contours;
-        }
-
-
-
-        cv::Mat neumannBoundCond(cv::Mat mat) {
-            int rows = mat.rows;
-            int cols = mat.cols;
-
-            cv::Mat nbc = mat.clone();
-
-            //g([1 nrow],[1 ncol]) = g([3 nrow-2],[3 ncol-2]);
-            nbc.at<float>(0, 0) = nbc.at<float>(2, 2);
-            nbc.at<float>(0, cols - 1) = nbc.at<float>(2, cols - 3);
-            nbc.at<float>(rows - 1, 0) = nbc.at<float>(rows - 3, 2);
-            nbc.at<float>(rows - 1, cols - 1) = nbc.at<float>(rows - 3, cols - 3);
-
-            //g([1 nrow],2:end-1) = g([3 nrow-2],2:end-1);
-            for (int j = 1; j < cols - 1; j++) {
-                nbc.at<float>(0, j) = nbc.at<float>(2, j);
-                nbc.at<float>(rows - 1, j) = nbc.at<float>(rows - 3, j);
-            }
-
-            //g(2:end-1,[1 ncol]) = g(2:end-1,[3 ncol-2]);
-            for (int i = 1; i < rows - 1; i++) {
-                nbc.at<float>(i, 0) = nbc.at<float>(i, 2);
-                nbc.at<float>(i, cols - 1) = nbc.at<float>(i, cols - 3);
-            }
-
-            return nbc;
         }
     }
 }

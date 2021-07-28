@@ -7,6 +7,10 @@ using json = nlohmann::json;
 
 namespace segment {
 
+    /*
+     * removeClumpsWithoutNuclei removes unnecessary clumps that do not have any
+     * detectable nuclei
+     */
     void removeClumpsWithoutNuclei(vector<Clump> *clumps) {
         // remove clumps that don't have any nuclei
         int tempindex = 0;
@@ -91,6 +95,9 @@ namespace segment {
         return regions;
     }
 
+    /*
+     * saveNucleiBoundaries saves each cell's nuclei boundaries as contours to a JSON file
+     */
     void saveNucleiBoundaries(json &nucleiBoundaries, Image *image, Clump *clump, int clumpIdx) {
         nucleiBoundaries[clumpIdx] = json::array();
         for (vector<cv::Point> &contour : clump->nucleiBoundaries) {
@@ -100,11 +107,16 @@ namespace segment {
             }
             nucleiBoundaries[clumpIdx].push_back(nucleiBoundary);
         }
+
+        //Write to JSON file every 100 clumps
         if (clumpIdx % 100 == 0) {
             image->writeJSON("nucleiBoundaries", nucleiBoundaries);
         }
     }
 
+    /*
+     * loadInitialCellBoundaries loads nuclei boundaries from a JSON file into memory
+     */
     void loadNucleiBoundaries(json &nucleiBoundaries, Image *image, vector<Clump> *clumps) {
         nucleiBoundaries = image->loadJSON("nucleiBoundaries");
         for (int clumpIdx = 0; clumpIdx < nucleiBoundaries.size(); clumpIdx++) {
@@ -128,6 +140,10 @@ namespace segment {
 
     }
 
+    /*
+     * runNucleiDetection is the main function that finds the nuclei boundaries for the image
+     * This function spawns multiple threads for each clump that finds the nuclei boundaries.
+     */
     void runNucleiDetection(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity,
                             double minCircularity, bool debug) {
         vector<Clump> *clumps = &image->clumps;
@@ -136,12 +152,14 @@ namespace segment {
 
         loadNucleiBoundaries(nucleiBoundaries, image, clumps);
 
+        //Function called when thread is started
         function<void(Clump *, int)> threadFunction = [&image, &delta, &minArea, &maxArea, &maxVariation, &minDiversity, &minCircularity, &debug](Clump *clump, int i) {
             if (clump->nucleiBoundariesLoaded) {
-                image->log("Loaded clump %u nuclei from file\n", i);
+                //image->log("Loaded clump %u nuclei from file\n", i);
                 return;
             }
             cv::Mat clumpMat = clump->extract();
+            //MSER algorithm returns a mask of nuclei as a list of points
             vector<vector<cv::Point>> nuclei = runMser(&clumpMat, clump->offsetContour,
                                                        delta, minArea, maxArea, maxVariation,
                                                        minDiversity, debug);
@@ -150,10 +168,10 @@ namespace segment {
                 clump->convertNucleiBoundariesToContours();
                 clump->filterNuclei(minCircularity);
             }
-
-            image->log("Clump %u, nuclei found: %lu\n", i, clump->nucleiBoundaries.size());
+            //image->log("Clump %u, nuclei found: %lu\n", i, clump->nucleiBoundaries.size());
         };
 
+        //Function called when thread finishes
         function<void(Clump *, int)> threadDoneFunction = [&nucleiBoundaries, &image](Clump *clump, int clumpIdx) {
             if (!clump->nucleiBoundariesLoaded) {
                 saveNucleiBoundaries(nucleiBoundaries, image, clump, clumpIdx);
@@ -163,6 +181,7 @@ namespace segment {
         int maxThreads = 4;
         ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 
+        //DEBUG: Print the first and second clumps with the most nuclei
         int maxCell = 0;
         int secondCell = 0;
         for (Clump &clump : *clumps) {

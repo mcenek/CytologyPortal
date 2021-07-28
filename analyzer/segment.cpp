@@ -52,7 +52,7 @@ int main (int argc, const char * argv[])
     // GMM params
     int maxGmmIterations = 10;
     // GMM post processing params
-    double minAreaThreshold = 10.0;
+    double minAreaThreshold = 1000.0;
     // MSER params
     int delta = 3, minArea = 120, maxArea = 600;
     double maxVariation = 0.3, minDiversity = 0.25;

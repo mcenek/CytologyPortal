@@ -176,7 +176,7 @@ namespace segment {
             }
         };
 
-        int maxThreads = 32;
+        int maxThreads = 8;
         // Spawns threads that run the thread function for each clump
         ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 

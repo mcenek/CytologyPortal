@@ -41,7 +41,7 @@ namespace segment {
 
         void runSegmentation(string fileName);
         cv::Mat createNucleiHist(Image image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity, double minCircularity, bool debug);
-        void optimizeParameters(string filename1, string filename2);
+        void optimizeParameters(string filename1);
         cv::Mat maskNuclei(cv::Mat image);
     };
 }

@@ -169,5 +169,52 @@ namespace segment {
 
     }
 
+    int runNucleiDetectionandMask(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity,
+                            double minCircularity, bool debug, cv::Scalar intensity, bool test) {
+        vector<Clump> *clumps = &image->clumps;
+        int totalNuclei = 0;
+        json nucleiBoundaries;
+
+        loadNucleiBoundaries(nucleiBoundaries, image, clumps);
+
+        function<void(Clump *, int)> threadFunction = [&image, &delta, &minArea, &maxArea, &maxVariation, &minDiversity, &minCircularity, &debug, &intensity , &totalNuclei, &test](Clump *clump, int i) {
+            if (clump->nucleiBoundariesLoaded) {
+                image->log("Loaded clump %u nuclei from file\n", i);
+                return;
+            }
+            cv::Mat clumpMat = clump->extract();
+            vector<vector<cv::Point>> nuclei = runMser(&clumpMat, clump->offsetContour,
+                                                       delta, minArea, maxArea, maxVariation,
+                                                       minDiversity, debug);
+            clump->nucleiBoundaries = nuclei;
+            if (clump->nucleiBoundaries.size() > 0) {
+                if( test == false){
+                    clump->generateNucleiMasks(intensity);
+                }
+                else if( test == true){
+                     clump->convertNucleiBoundariesToContours();
+                }
+                clump->filterNuclei(minCircularity);
+                totalNuclei++;
+            }
+
+            image->log("Clump %u, nuclei found: %lu\n", i, clump->nucleiBoundaries.size());
+        };
+
+        function<void(Clump *, int)> threadDoneFunction = [&nucleiBoundaries, &image](Clump *clump, int clumpIdx) {
+            if (!clump->nucleiBoundariesLoaded) {
+                saveNucleiBoundaries(nucleiBoundaries, image, clump, clumpIdx);
+            }
+        };
+
+        int maxThreads = 4;
+        ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
+
+        image->writeJSON("nucleiBoundaries", nucleiBoundaries);
+
+        removeClumpsWithoutNuclei(clumps);
+        return totalNuclei;
+    }
+
 
 }

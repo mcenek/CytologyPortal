@@ -167,12 +167,40 @@ namespace segment {
         }
         this->nucleiBoundaries = filteredNuclei;
     }
+    void Clump::generateNucleiMasks(cv::Scalar intensity) {
+         if(this->nucleiBoundaries.empty())
+            cerr << "nucleiBoundaries must be defined and present before Clump::generateNucleiMasks can be run." << "\n";
+        cv::Mat regionMask = cv::Mat::zeros(this->boundingRect.height, this->boundingRect.width, CV_8U);
+        cv::drawContours(regionMask, this->nucleiBoundaries, -1, cv::Scalar(255), CV_FILLED);
+        //cv::findContours(regionMask, this->nucleiBoundaries, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+
+        cv::Mat maskedImage = cv::Mat(this->boundingRect.height, this->boundingRect.width, CV_8UC1);
+
+        maskedImage.setTo(cv::Scalar(intensity));
+        this->mat.copyTo(maskedImage, regionMask); 
+
+
+        //if(this->nucleiBoundaries.empty()){
+            //cerr << "nucleiBoundaries must be defined and present before Clump::generateNucleiMasks can be run." << "\n";}
+        //for (unsigned int cellIdx = 0; cellIdx < this->cells.size(); cellIdx++) {  //take out loop
+            //Cell *cell = &this->cells[0];
+
+            //cv::Mat nucleusMask = cv::Mat::zeros(this->boundingRect.height, this->boundingRect.width, CV_8U);
+            //cv::drawContours(nucleusMask, this->nucleiBoundaries, 0, cv::Scalar(intensity), CV_FILLED);
+
+            //cell->nucleusMask = nucleusMask;
+            //cell->nucleusArea = cv::contourArea(this->nucleiBoundaries[0]);
+
+            //cv::imshow("Nucleus mask " + to_string(cellIdx), nucleusMask * 1.0);
+            //cv::waitKey(0);
+    }
+
 
     /*
-    void Clump::generateNucleiMasks() {
+    int Clump::generateNucleiMasks(cv::Scalar intensity) {
         if(this->nucleiBoundaries.empty())
             cerr << "nucleiBoundaries must be defined and present before Clump::generateNucleiMasks can be run." << "\n";
-        for (unsigned int cellIdx = 0; cellIdx < this->cells.size(); cellIdx++) {
+        for (unsigned int cellIdx = 0; cellIdx < this->cells.size(); cellIdx++) {  //take out loop
             Cell *cell = &this->cells[cellIdx];
 
             cv::Mat nucleusMask = cv::Mat::zeros(this->boundingRect.height, this->boundingRect.width, CV_8U);

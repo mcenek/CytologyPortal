@@ -49,7 +49,7 @@ namespace segment {
         void createCells();
         void convertNucleiBoundariesToContours();
         void filterNuclei(double threshold = 0.5);
-        //void generateNucleiMasks();
+        void generateNucleiMasks(cv::Scalar intensity);
         cv::Mat calcClumpPrior();
         vector<vector<cv::Point>> getFinalCellContours();
     };

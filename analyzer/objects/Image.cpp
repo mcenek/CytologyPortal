@@ -21,6 +21,22 @@ namespace segment {
         log("Image data: (rows) %i (cols) %i (channels) %i\n", height, width, channels);
 
     }
+    Image::Image(cv::Mat mat) {
+        //boost::filesystem::path tmp(path);
+        //this->path = tmp;
+        this->padding = 1;
+        this->mat = mat;
+
+
+        int channels = this->mat.channels();
+        int width = this->mat.cols;
+        int height = this->mat.rows;
+
+        clearLog();
+        log("Loaded %s\n", path.c_str());
+        log("Image data: (rows) %i (cols) %i (channels) %i\n", height, width, channels);
+
+    }
 
     cv::Mat Image::readImage() {
         cv::Mat image = cv::imread(this->path.string());

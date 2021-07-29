@@ -20,7 +20,7 @@ namespace segment {
         vector<cv::Point> cytoBoundary;
         vector<cv::Point> cytoAssocs;
         cv::Mat cytoMask;
-        //cv::Mat nucleusMask; //Used to avoid re-computing the nucleiMasks
+        cv::Mat nucleusMask; //Used to avoid re-computing the nucleiMasks
         vector<cv::Point> nucleusBoundary;
         cv::Mat shapePrior;
         cv::Mat phi; //Used to store the evolving LSF front

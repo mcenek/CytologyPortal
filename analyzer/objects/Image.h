@@ -22,6 +22,7 @@ namespace segment {
         vector<Clump> clumps;
 
         Image(string path);
+        Image(cv::Mat mat);
 
         cv::Mat padMatrix();
         cv::Mat readImage();
@@ -38,6 +39,7 @@ namespace segment {
         void createClumps(vector<vector<cv::Point>> clumpBoundaries);
         cv::Mat getNucleiBoundaries();
         cv::Mat getFinalResult();
+        
     };
 }
 

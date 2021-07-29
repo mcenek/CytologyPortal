@@ -8,6 +8,7 @@
 #include "functions/NucleiDetection.h"
 #include "functions/OverlappingCellSegmentation.h"
 #include "functions/Preprocessing.h"
+#include <iostream>
 
 extern "C" {
 #include "vl/quickshift.h"
@@ -186,22 +187,22 @@ namespace segment {
             //cv::waitKey(0);
         }
     }
-    void Segmenter::optimizeParameters(string filename1, string filename2){
+    void Segmenter::optimizeParameters(string filename1){
         //focus on nuclei detection
         debug = true;
         
-        Image image1 = Image(filename1); 
-        Image image2 = Image(filename2); 
-        cv::Mat testImage = cv::imread(filename1);
-        testImage = Segmenter::maskNuclei(testImage);
+        
+        //Image image2 = Image(filename2); 
+        //cv::Mat testImage = cv::imread(filename1);
+        //testImage = Segmenter::maskNuclei(testImage);
 
         
         cv::Mat outimg;
-        cv::Mat firstHist;
-        firstHist = Segmenter::createNucleiHist(image1, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);// where hist one is control
+        //cv::Mat firstHist;
+        //firstHist = Segmenter::createNucleiHist(image1, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);// where hist one is control
         //replace with masked nuclei
-        cv::Mat secondHist;
-        secondHist = Segmenter::createNucleiHist(image2, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);
+        //cv::Mat secondHist;
+        //secondHist = Segmenter::createNucleiHist(image2, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);
         
 
         double Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity;
@@ -211,9 +212,11 @@ namespace segment {
         BestmaxVariation = this->maxVariation ;
         BestminDiversity = this->minDiversity ;
         BestminCircularity = this->minCircularity ;
-        
+        // call on masked image again.
         bool Optimized = false;
+        
         while(Optimized == false){
+                for(int intensity = 50; intensity < 200; intensity + 1){
                 // double compare = cv::compareHist(firstHist, secondHist, cv::HISTCMP_CORREL );
                 // //https://docs.opencv.org/master/d6/dc7/group__imgproc__hist.html#ga994f53817d621e2e4228fc646342d386
                 // secondHist = createNucleiHist(image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug);
@@ -231,19 +234,51 @@ namespace segment {
                                 for(double l =0.8; l<4;i+ .1){
                                         Bestdelta = l;
                                         for(double m =0.1; m<1;i+.01){
-                                                BestminDiversity = m;
-                                                secondHist = createNucleiHist(image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug);
-                                                double compare = cv::compareHist(firstHist, secondHist, cv::HISTCMP_CORREL );
+                                                //BestminDiversity = m;
+                                                //secondHist = createNucleiHist(image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug);
+                                                //double compare = cv::compareHist(firstHist, secondHist, cv::HISTCMP_CORREL );
                                                 //https://docs.opencv.org/master/d6/dc7/group__imgproc__hist.html#ga994f53817d621e2e4228fc646342d386
-                                                secondHist = createNucleiHist(image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug);
-                                                if(compare >= .8){
-                                                        Optimized = true;
+                                                //secondHist = createNucleiHist(image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug);
+                                                //if(compare >= .8){
+                                                //        Optimized = true;
+                                                //}
+                                                Image image1 = Image(filename1); 
+                                                int total = runNucleiDetectionandMask(&image1, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug, intensity, false);
+                                                if(debug == true){
+                                                        std::cout << total;
                                                 }
+                                                // Display and save nuclei to an image
+                                                outimg = image1.getNucleiBoundaries();
+                                                
+
+                                                image1.writeImage("nucleiBoundaries.png", outimg);
+                                                outimg.release();
+                                                // test nuclei detection on masked image
+                                                Image image2 = Image(outimg); //using cv::Mat version of Image constructor
+
+                                                int total2 = runNucleiDetectionandMask(&image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug, intensity, true);
+                                                if(debug == true){
+                                                        std::cout << total;
+                                                }
+                                                //system("pause");
+                                                if (total == total2 && total> 1){        
+                                                        Optimized = true;
+                                                        break;
+                                                 }
+                                                
+                                        
                                         }
+                                        if(Optimized == true){break;}
                                 }
+                                if(Optimized == true){break;}
                         }
+                        if(Optimized == true){break;}
                      }
+                     if(Optimized == true){break;}
                 }
+                if(Optimized == true){break;}
+                }
+                if(Optimized == true){break;}
         }
 
         
@@ -279,26 +314,7 @@ namespace segment {
         
         //return dataset;                                     
     }
-    cv::Mat Segmenter::maskNuclei(cv::Mat image){
-            using namespace cv;
-             Mat toReturn;
-        //     Mat image2;
-        //     cvtColor(image,  image2, cv::COLOR_BGR2GRAY );
-        //     double cytoIntesity = 150;
-        //     double nucleiIntensityThresh = 50;
-        //     threshold(image2, toReturn, nucleiIntensityThresh, cytoIntesity, 4 );
-        //     for(int i=0; i <toReturn.rows;i++){
-        //             for(int j=0;toReturn.cols;j++){
-        //                     if(toReturn.at<uchar>(i,j) = 0){
-        //                            toReturn.at<uchar>(i,j) = cytoIntesity;
-        //                     }
-        //             }
-        //     }
-
-            //grabCut();
-            
-            return toReturn;
-    }
+    
 
 
 }

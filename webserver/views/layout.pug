@@ -1,0 +1,55 @@
+block variables
+doctype html
+html
+    head
+        title= locale.app_name
+        meta(name='viewport', content='width=device-width initial-scale=1')
+        link(rel='icon', type='image/png', href='/favicon.png')
+        link(rel='apple-touch-icon', href='/apple-touch-icon.png')
+        link(rel='stylesheet', type='text/css', href='/stylesheets/material-components-web.min.css')
+        link(rel='stylesheet', type='text/css', href='/fonts/Material-Icons/material-icons.css')
+        link(rel='stylesheet', type='text/css', href='/stylesheets/layout.css')
+        script.
+            const currentID = "#{id}";
+            const currentUsername = "#{username}";
+            const locale = {
+                app_name: "#{locale.app_name}",
+                no: "#{locale.no}",
+                ok: "#{locale.ok}",
+                yes: "#{locale.yes}"
+            }
+        script(type='text/javascript', src='/javascripts/jquery-3.6.0.min.js')
+        script(type='text/javascript', src='/javascripts/material-components-web.min.js')
+        script(type='text/javascript', src='/javascripts/requests.js')
+        script(type='text/javascript', src='/javascripts/dialog.js')
+        script(type='text/javascript', src='/javascripts/snackbar.js')
+        block header
+        script(type='text/javascript', src='/javascripts/layout.js')
+    body
+
+        header.mdc-top-app-bar.mdc-top-app-bar--fixed
+            .mdc-top-app-bar__row.mdc-elevation--z5
+                section.mdc-top-app-bar__section.mdc-top-app-bar__section--align-start
+                    button.mobile.material-icons.mdc-top-app-bar__navigation-icon.mdc-ripple(style="display: none; color: white; background-color: transparent; border: none; outline: none") menu
+                    h3#app-name(onclick="window.location.href='/'" style="margin-left: 5px; cursor: pointer; font-size: 22px;")= locale.app_name
+
+
+        block drawer
+
+        .mdc-drawer-scrim
+
+        .mdc-drawer-app-content.mdc-top-app-bar--fixed-adjust
+            #accountCard.mdc-card.mdc-elevation--z10(style="display:none; z-index:1;position:absolute;width: 300px; float:right; right: 0px; margin-right: 10px;padding-bottom: 10px; padding-left: 16px; margin-top: 10px; padding-top: 15px")
+                div
+                    div(style="padding-right: 16px;")
+                        i.material-icons.mdc-list-item__graphic(style='display:inline; float: left; font-size: 64px') account_circle
+                        h2.selectable.mdc-typography.mdc-typography--headline6(style="text-align: right; margin-bottom: 0")= username
+                        h3.selectable.mdc-typography.mdc-typography--subtitle2(style="text-align: right; margin-top: 0")
+
+                    .mdc-card__action-buttons(style="float: right; padding-right: 7px;")
+                        a(href="/accounts")
+                            button.mdc-button.mdc-card__action.mdc-card__action--button(style="float: right")= locale.account
+                        a(href="/logout")
+                            button.mdc-button.mdc-card__action.mdc-card__action--button(style="float: right")= locale.logout
+            block content
+

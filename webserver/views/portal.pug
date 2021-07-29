@@ -1,0 +1,22 @@
+extends layout
+
+block header
+    link(rel='stylesheet', type='text/css', href='/stylesheets/error.css')
+
+block content
+
+block drawer
+    aside.mdc-drawer.mdc-top-app-bar--fixed-adjust
+        .mdc-drawer__header
+            h3.mdc-drawer__title= locale.web_portal
+        .mdc-drawer__content
+            nav.mdc-list
+                a.mdc-list-item.mdc-list-item--activated(href='/portal')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') code
+                    span.mdc-list-item__text= locale.web_portal
+                a.mdc-list-item(href='/files')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
+                    span.mdc-list-item__text= locale.files
+                a.mdc-list-item(href='/upload')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') file_upload
+                    span.mdc-list-item__text= locale.upload

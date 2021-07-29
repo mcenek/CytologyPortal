@@ -1,0 +1,168 @@
+@import url("../fonts/Roboto/roboto.css");
+@import url("../fonts/JosefinSans/josefinsans.css");
+
+:root {
+    --mdc-theme-primary: #5e2268;
+}
+
+* :not(pre) {
+    font-family: Roboto, Arial, Helvetica, sans-serif;
+}
+
+.mdc-drawer {
+    height: auto;
+}
+
+.mdc-drawer {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+
+.selectable {
+    -webkit-touch-callout: default;
+    -webkit-user-select: auto;
+    -khtml-user-select: default;
+    -moz-user-select: auto;
+    -ms-user-select: auto;
+    user-select: auto;
+}
+
+body {
+    display: flex;
+    height: 100vh;
+}
+
+.mdc-drawer-app-content {
+    flex: auto;
+    overflow: auto;
+    position: relative;
+}
+
+#app-name {
+    font-family: Josefin Sans;
+}
+
+.app-bar {
+    position: absolute;
+
+}
+
+.mdc-top-app-bar {
+    z-index: 7;
+    /*background-color: #15438c;*/
+}
+
+
+.box {
+    background-color: #ffffff;
+}
+
+h1 {
+    font-size: 30px;
+    margin-top: 0;
+    margin-bottom: 1px;
+}
+
+h2 {
+    margin-top: 0;
+}
+
+input[type="button"] {
+    width: 75px;
+    margin-top: 7px;
+    cursor: pointer;
+}
+
+
+button {
+    cursor: pointer;
+}
+
+#computername {
+    font-size: 15px;
+    margin-bottom: 17px;
+    margin-left: 2px;
+}
+
+::-webkit-scrollbar {
+    display: none;
+}
+
+pre {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+a:visited {
+    color: blue;
+}
+
+button.material-icons {
+    background-color: transparent;
+    border: none;
+    outline: none
+}
+
+.mdc-drawer__header{
+    margin-bottom: -20px;
+}
+
+.mdc-drawer__title {
+    display: inline;
+}
+
+
+#accounts-table input[type="text"]:disabled {
+    background: transparent;
+}
+
+#accounts-table input[type="text"], #accounts-table input[type="number"], #accounts-table input[type="date"]{
+    width: 155px;
+    border: none;
+    font-size: 15px;
+
+}
+
+#accounts-table input:focus {
+    outline: none;
+}
+
+#link {
+    padding-bottom:10px;
+    margin-bottom: 20px;
+    border: none;
+    border-bottom: 1px solid darkgray;
+    outline: none;
+    font-size: 1rem;
+    color: rgba(0,0,0,.6);
+    width: 100%;
+}
+
+
+#accounts-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.sharing-tr {
+    border-bottom: 1px solid darkgray;
+}
+
+.sharing-p {
+    margin: 0;
+}
+
+@media(min-width: 592px) {
+    .mdc-dialog .mdc-dialog__surface{max-width:100%}
+}
+

@@ -189,7 +189,7 @@ namespace segment {
     }
     void Segmenter::optimizeParameters(string filename1){
         //focus on nuclei detection
-        debug = true;
+        debug = false;
         
         
         //Image image2 = Image(filename2); 
@@ -215,8 +215,8 @@ namespace segment {
         // call on masked image again.
         bool Optimized = false;
         
-        while(Optimized == false){
-                for(int intensity = 50; intensity < 200; intensity + 1){
+        //while(Optimized == false){
+                
                 // double compare = cv::compareHist(firstHist, secondHist, cv::HISTCMP_CORREL );
                 // //https://docs.opencv.org/master/d6/dc7/group__imgproc__hist.html#ga994f53817d621e2e4228fc646342d386
                 // secondHist = createNucleiHist(image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug);
@@ -229,11 +229,13 @@ namespace segment {
                      BestminArea = i;
                      for(int j = this->minArea; j<this->maxArea;j++){  
                         BestmaxArea = j;
-                        for(double k =0.1; k<1;k + .001){
+                        for(double k =0.1; k<1;k + .01){
                                 BestmaxVariation = k;
                                 for(double l =0.8; l<4;i+ .1){
                                         Bestdelta = l;
                                         for(double m =0.1; m<1;i+.01){
+                                                BestminDiversity = m;
+                                                for(int intensity = 50; intensity < 200; intensity + 1){
                                                 //BestminDiversity = m;
                                                 //secondHist = createNucleiHist(image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug);
                                                 //double compare = cv::compareHist(firstHist, secondHist, cv::HISTCMP_CORREL );
@@ -251,17 +253,17 @@ namespace segment {
                                                 outimg = image1.getNucleiBoundaries();
                                                 
 
-                                                image1.writeImage("nucleiBoundaries.png", outimg);
+                                                image1.writeImage("nucleiBoundaries.png", image1.mat);
                                                 outimg.release();
                                                 // test nuclei detection on masked image
-                                                Image image2 = Image(outimg); //using cv::Mat version of Image constructor
+                                                //Image image2 = Image("nucleiBoundaries.png"); 
 
-                                                int total2 = runNucleiDetectionandMask(&image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug, intensity, true);
+                                                int total2 = runNucleiDetectionandMask(&image1, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug, intensity, true);
                                                 if(debug == true){
                                                         std::cout << total;
                                                 }
                                                 //system("pause");
-                                                if (total == total2 && total> 1){        
+                                                if (total2 ==1){        
                                                         Optimized = true;
                                                         break;
                                                  }
@@ -278,8 +280,9 @@ namespace segment {
                 }
                 if(Optimized == true){break;}
                 }
-                if(Optimized == true){break;}
-        }
+               // if(Optimized == true){break;}
+                //Optimized= true;
+        //}
 
         
         

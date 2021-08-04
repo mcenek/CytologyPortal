@@ -25,7 +25,7 @@ namespace segment {
         vector<vector<cv::Point>> cytoBoundaries;
         bool initCytoBoundariesLoaded = false;
         cv::Mat nucleiAssocs;
-        vector<cv::Mat> nucleiMasks; //Used to avoid re-computing the nucleiMasks
+        cv::Mat nucleiMask; //Used to avoid re-computing the nucleiMasks
         vector<Cell> cells;
         cv::Mat clumpPrior;
         cv::Mat edgeEnforcer;

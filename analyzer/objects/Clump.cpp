@@ -171,49 +171,17 @@ namespace segment {
          if(this->nucleiBoundaries.empty())
             cerr << "nucleiBoundaries must be defined and present before Clump::generateNucleiMasks can be run." << "\n";
         cv::Mat regionMask = cv::Mat::zeros(this->boundingRect.height, this->boundingRect.width, CV_8U);
+        //regionMask.setTo(cv::Scalar());
         cv::drawContours(regionMask, this->nucleiBoundaries, -1, cv::Scalar(255), CV_FILLED);
         //cv::findContours(regionMask, this->nucleiBoundaries, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        this->nucleiMask = regionMask;
+        //bitwise cv::bitwise and of the mask and the original image, invert region mask, binary and with the intensity and then bitwise or
+        //invert region mask with bitwise not and bitwise and result with the intesnity
 
-        cv::Mat maskedImage = cv::Mat(this->boundingRect.height, this->boundingRect.width, CV_8UC1);
-
-        maskedImage.setTo(cv::Scalar(intensity));
-        this->mat.copyTo(maskedImage, regionMask); 
-
-
-        //if(this->nucleiBoundaries.empty()){
-            //cerr << "nucleiBoundaries must be defined and present before Clump::generateNucleiMasks can be run." << "\n";}
-        //for (unsigned int cellIdx = 0; cellIdx < this->cells.size(); cellIdx++) {  //take out loop
-            //Cell *cell = &this->cells[0];
-
-            //cv::Mat nucleusMask = cv::Mat::zeros(this->boundingRect.height, this->boundingRect.width, CV_8U);
-            //cv::drawContours(nucleusMask, this->nucleiBoundaries, 0, cv::Scalar(intensity), CV_FILLED);
-
-            //cell->nucleusMask = nucleusMask;
-            //cell->nucleusArea = cv::contourArea(this->nucleiBoundaries[0]);
-
-            //cv::imshow("Nucleus mask " + to_string(cellIdx), nucleusMask * 1.0);
-            //cv::waitKey(0);
     }
 
 
-    /*
-    int Clump::generateNucleiMasks(cv::Scalar intensity) {
-        if(this->nucleiBoundaries.empty())
-            cerr << "nucleiBoundaries must be defined and present before Clump::generateNucleiMasks can be run." << "\n";
-        for (unsigned int cellIdx = 0; cellIdx < this->cells.size(); cellIdx++) {  //take out loop
-            Cell *cell = &this->cells[cellIdx];
 
-            cv::Mat nucleusMask = cv::Mat::zeros(this->boundingRect.height, this->boundingRect.width, CV_8U);
-            cv::drawContours(nucleusMask, this->nucleiBoundaries, cellIdx, cv::Scalar(255), CV_FILLED);
-
-            cell->nucleusMask = nucleusMask;
-            cell->nucleusArea = cv::contourArea(this->nucleiBoundaries[cellIdx]);
-
-            //cv::imshow("Nucleus mask " + to_string(cellIdx), nucleusMask * 1.0);
-            //cv::waitKey(0);
-        }
-    }
-     */
 
     cv::Mat Clump::calcClumpPrior() {
         for (unsigned int cellIdx = 0; cellIdx < this->cells.size(); cellIdx++) {

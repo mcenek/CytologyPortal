@@ -190,15 +190,22 @@ namespace segment {
             if (clump->nucleiBoundaries.size() > 0) {
                 if( test == false){
                     clump->generateNucleiMasks(intensity);
+                    cv::Mat maskedImage;
+                    cv::bitwise_and(image->mat,clump->nucleiMask, maskedImage);
+                    cv::Mat invertedMask;
+                    cv::bitwise_not(clump->nucleiMask,invertedMask);
+                    cv::bitwise_and(invertedMask,intensity, invertedMask);
+                    cv::bitwise_or(maskedImage,invertedMask, image->mat);
                 }
                 else if( test == true){
                      clump->convertNucleiBoundariesToContours();
                 }
                 clump->filterNuclei(minCircularity);
-                totalNuclei++;
+                //totalNuclei + clump->nucleiCenters.size();
             }
 
             image->log("Clump %u, nuclei found: %lu\n", i, clump->nucleiBoundaries.size());
+            totalNuclei++;
         };
 
         function<void(Clump *, int)> threadDoneFunction = [&nucleiBoundaries, &image](Clump *clump, int clumpIdx) {
@@ -213,7 +220,7 @@ namespace segment {
         image->writeJSON("nucleiBoundaries", nucleiBoundaries);
 
         removeClumpsWithoutNuclei(clumps);
-        return totalNuclei;
+        return  totalNuclei;
     }
 
 

@@ -55,8 +55,9 @@ namespace segment {
         double end;
 
         Image image = Image(fileName);
-
-
+        Image testImage = Image("images/EDF/EDF003-1.png");
+        optimizeParameters(testImage);
+        if (debug) image.log("Finished Optimization...\n");
         cv::Mat outimg;
 
 
@@ -199,6 +200,139 @@ namespace segment {
             //cv::imshow("Overlapping Cell Segmentation", outimg);
             //cv::waitKey(0);
         }
+    }
+    void Segmenter::optimizeParameters(Image image){
+        //focus on nuclei detection
+        debug = true;
+        cv::Mat outimg;
+        double Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity;
+        Bestdelta = this->delta;
+        BestminArea = this->minArea;
+        BestmaxArea = this->maxArea;
+        BestmaxVariation = this->maxVariation ;
+        BestminDiversity = this->minDiversity ;
+        BestminCircularity = this->minCircularity ;
+        bool Optimized = false;
+        
+        //clump segmentation to run masks
+        double end;
+        auto startClumpSeg = chrono::high_resolution_clock::now();
+        auto start = chrono::high_resolution_clock::now();
+
+        start = chrono::high_resolution_clock::now();
+        if (debug) image.log("Beginning Preprocessing...\n");
+        cv::Mat gmmPredictions = image.loadMatrix("gmmPredictions.yml");
+        if (gmmPredictions.empty()) {
+            // GMM predictions is a black and white photo of the input images
+            // Where black is the background and white are the clumps
+            gmmPredictions = runPreprocessing(&image, kernelsize, maxdist, threshold1, threshold2, maxGmmIterations);
+            image.writeMatrix("gmmPredictions.yml", gmmPredictions);
+
+            // Saving the matrix to png requires a threshold
+            cv::threshold(gmmPredictions, outimg, 0, 256, CV_THRESH_BINARY);
+            image.writeImage("gmmPredictions.png", outimg);
+            outimg.release();
+        }
+        image.gmmPredictions = gmmPredictions;
+
+        end = std::chrono::duration_cast<std::chrono::microseconds>(
+                chrono::high_resolution_clock::now() - start).count() / 1000000.0;
+        if (debug) image.log("Finished with preprocessing, time: %f\n", end);
+
+        start = chrono::high_resolution_clock::now();
+        if (debug) image.log("Beginning GMM Output post processing...\n");
+
+        // Finds the clump boundaries using the gmmPredictions mask
+        vector <vector<cv::Point>> clumpBoundaries = findFinalClumpBoundaries(gmmPredictions, minAreaThreshold);
+
+        printf("CLUMPS: %zu\n", clumpBoundaries.size());
+
+
+        // Color the clumps different colors and then write to png file
+        outimg = drawColoredContours(image.mat, &clumpBoundaries);
+        image.writeImage("clump_boundaries.png", outimg);
+        if (debug) {
+            //cv::imshow("Clump Segmentation", outimg);
+            //cv::waitKey(0);
+        }
+        outimg.release();
+
+        // Create a Clump object for each clump boundary
+        image.createClumps(clumpBoundaries);
+
+        end = std::chrono::duration_cast<std::chrono::microseconds>(
+                chrono::high_resolution_clock::now() - start).count() / 1000000.0;
+        unsigned int numClumps = clumpBoundaries.size();
+        if (debug) image.log("Finished GMM post processing, clumps found:%i, time: %f\n", numClumps, end);
+
+        double endClumpSeg = std::chrono::duration_cast<std::chrono::microseconds>(
+                chrono::high_resolution_clock::now() - startClumpSeg).count() / 1000000.0;
+        if (debug) image.log("Finished clump segmentation, time: %f\n", endClumpSeg);      
+        if (debug) image.log("Beginning optimization of nuclei detection...\n");
+
+        //begin brute force paramter optimization
+        for(int i =0; i<this->minArea;i++){
+                BestminArea = i;
+                     for(int j = this->minArea; j<this->maxArea;j++){  
+                        BestmaxArea = j;
+                        for(double k =0.1; k<1;k + .01){
+                                BestmaxVariation = k;
+                                for(double l =0.8; l<4;i+ .1){
+                                        Bestdelta = l;
+                                        for(double m =0.1; m<1;i+.01){
+                                                BestminDiversity = m;
+                                                for(int intensity = 50; intensity < 200; intensity + 1){
+                                                
+                                                
+                                                //std::cout << "\n about to run nuclei detetion";
+                                                int total = runNucleiDetectionandMask(&image, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug, intensity, false);
+                                                if(debug == true){
+                                                        std::cout << "\n" << total;
+                                                }
+                                                
+                                                // test nuclei detection on masked image
+                                                Image image2 = image; 
+
+                                                int total2 = runNucleiDetectionandMask(&image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug, intensity, true);
+                                                if(debug == true){
+                                                        std::cout << "\n" << total2;
+                                                }
+                                                //system("pause");
+                                                if (total2 ==2){        
+                                                        Optimized = true;
+                                                        break;
+                                                 }
+                                                
+                                        
+                                        }
+                                        if(Optimized == true){break;}
+                                }
+                                if(Optimized == true){break;}
+                        }
+                        if(Optimized == true){break;}
+                     }
+                     if(Optimized == true){break;}
+                }
+                if(Optimized == true){break;}
+                }
+               // if(Optimized == true){break;}
+                //Optimized= true;
+        //}
+
+        
+        
+        this->delta = Bestdelta;
+        this->minArea = BestminArea;
+        this->maxArea = BestmaxArea;
+        this->maxVariation = BestmaxVariation;
+        this->minDiversity = BestminDiversity;
+        this->minCircularity = BestminCircularity;
+        std::cout << "Best:" << Bestdelta << " " << BestminArea << " " << BestmaxArea << " " << BestmaxVariation << " " << BestminDiversity << " " << BestminCircularity;
+        outimg = image.getNucleiBoundaries();
+        image.writeImage("nucleiBoundaries.png", outimg);
+        outimg.release();
+
+
     }
 
 

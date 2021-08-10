@@ -198,6 +198,72 @@ namespace segment {
         removeClumpsWithoutNuclei(clumps);
 
     }
+     int runNucleiDetectionandMask(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity,
+                            double minCircularity, bool debug, cv::Scalar intensity, bool test) {
+        vector<Clump> *clumps = &image->clumps;
+        int totalNuclei = 0;
+        json nucleiBoundaries;
 
+        loadNucleiBoundaries(nucleiBoundaries, image, clumps);
+        
+        function<void(Clump *, int)> threadFunction = [&image, &delta, &minArea, &maxArea, &maxVariation, &minDiversity, &minCircularity, &debug, &intensity , &totalNuclei, &test](Clump *clump, int i) {
+            if (clump->nucleiBoundariesLoaded) {
+                image->log("Loaded clump %u nuclei from file\n", i);
+                return;
+            }
+            cv::Mat clumpMat = clump->extract();
+            vector<vector<cv::Point>> nuclei = runMser(&clumpMat, clump->offsetContour,
+                                                       delta, minArea, maxArea, maxVariation,
+                                                       minDiversity, debug);
+            clump->nucleiBoundaries = nuclei;
+            std::cout << "\n Program has made it to mask function";
+            if (clump->nucleiBoundaries.size() > 0) {
+                if( test == false){
+                    //clump->convertNucleiBoundariesToContours();
+                    clump->generateNucleiMasks(intensity);
+                    cv::Mat maskedImage;
+                    cv::bitwise_and(image->mat,clump->nucleiMask, maskedImage);
+                    cv::Mat invertedMask;
+                    cv::bitwise_not(clump->nucleiMask,invertedMask);
+                    cv::bitwise_and(invertedMask,intensity, invertedMask);
+                    cv::bitwise_or(maskedImage,invertedMask, image->mat);
+                }
+                else if( test == true){
+                     clump->convertNucleiBoundariesToContours();
+                }
+                clump->filterNuclei(minCircularity);
+                //totalNuclei + clump->nucleiCenters.size();
+            }
+
+            image->log("Clump %u, nuclei found: %lu\n", i, clump->nucleiBoundaries.size());
+            totalNuclei++;
+        };
+        //Function called when thread finishes
+        function<void(Clump *, int)> threadDoneFunction = [&nucleiBoundaries, &image](Clump *clump, int clumpIdx) {
+            if (!clump->nucleiBoundariesLoaded) {
+                saveNucleiBoundaries(nucleiBoundaries, image, clump, clumpIdx);
+            }
+        };
+
+        int maxThreads = 4;
+        ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
+
+        //DEBUG: Print the first and second clumps with the most nuclei
+        int maxCell = 0;
+        int secondCell = 0;
+        for (Clump &clump : *clumps) {
+            int sizez = clump.nucleiBoundaries.size();
+            if (sizez > maxCell) {
+                secondCell = maxCell;
+                maxCell = sizez;
+            }
+        }
+        cout << "MAX "<< maxCell << endl;
+        cout << "MAX2 "<< secondCell << endl;
+        image->writeJSON("nucleiBoundaries", nucleiBoundaries);
+
+        removeClumpsWithoutNuclei(clumps);
+        return totalNuclei;
+        }
 
 }

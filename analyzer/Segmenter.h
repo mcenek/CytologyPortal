@@ -46,6 +46,7 @@ namespace segment {
         void setCommonValues();
 
         void runSegmentation(string fileName);
+        void optimizeParameters(Image image);
     };
 }
 

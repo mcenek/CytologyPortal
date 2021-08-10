@@ -172,7 +172,19 @@ namespace segment {
         }
         this->nucleiBoundaries = filteredNuclei;
     }
-
+    void Clump::generateNucleiMasks(cv::Scalar intensity) {
+        std::cout << "\n inside mask function";
+         if(this->nucleiBoundaries.empty())
+            cerr << "nucleiBoundaries must be defined and present before Clump::generateNucleiMasks can be run." << "\n";
+        cv::Mat regionMask = cv::Mat::zeros(this->boundingRect.height, this->boundingRect.width, CV_8U);
+        //regionMask.setTo(cv::Scalar());
+        cv::drawContours(regionMask, this->nucleiBoundaries, -1, cv::Scalar(255), CV_FILLED);
+        //cv::findContours(regionMask, this->nucleiBoundaries, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        this->nucleiMask = regionMask;
+        //bitwise cv::bitwise and of the mask and the original image, invert region mask, binary and with the intensity and then bitwise or
+        //invert region mask with bitwise not and bitwise and result with the intesnity
+        std::cout << "\n Mask Complete";
+    }
     /*
     void Clump::generateNucleiMasks() {
         if(this->nucleiBoundaries.empty())

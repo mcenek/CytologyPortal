@@ -34,6 +34,7 @@ namespace segment {
     void loadNucleiBoundaries(json &nucleiBoundaries, Image *image, vector<Clump> *clumps);
 
     void runNucleiDetection(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity, double minCircularity, bool debug);
+    int runNucleiDetectionandMask(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity, double minCircularity, bool debug, cv::Scalar intensity, bool test);
 }
 
 

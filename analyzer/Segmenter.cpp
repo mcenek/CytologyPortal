@@ -47,9 +47,9 @@ namespace segment {
         auto total = chrono::high_resolution_clock::now();
 
         double end;
-
+        Image imagetest = Image("images/EDF/testsinglecell.png");
         Image image = Image(fileName);
-
+        optimizeParameters(imagetest);
 
         cv::Mat outimg;
 
@@ -110,6 +110,7 @@ namespace segment {
         if (debug) image.log("Beginning MSER nuclei detection...\n");
 
         // Find nuclei in each clump
+        
         runNucleiDetection(&image, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);
 
         // Display and save nuclei to an image
@@ -187,9 +188,9 @@ namespace segment {
             //cv::waitKey(0);
         }
     }
-    void Segmenter::optimizeParameters(string filename1){
+    void Segmenter::optimizeParameters(Image image){
         //focus on nuclei detection
-        debug = false;
+        debug = true;
         
         
         //Image image2 = Image(filename2); 
@@ -198,11 +199,7 @@ namespace segment {
 
         
         cv::Mat outimg;
-        //cv::Mat firstHist;
-        //firstHist = Segmenter::createNucleiHist(image1, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);// where hist one is control
-        //replace with masked nuclei
-        //cv::Mat secondHist;
-        //secondHist = Segmenter::createNucleiHist(image2, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug);
+
         
 
         double Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity;
@@ -214,19 +211,35 @@ namespace segment {
         BestminCircularity = this->minCircularity ;
         // call on masked image again.
         bool Optimized = false;
+        Image image1= image;
         
-        //while(Optimized == false){
+        cv::Mat gmmPredictions = runPreprocessing(&image1, kernelsize, maxdist, threshold1, threshold2, maxGmmIterations);
+        image1.writeMatrix("gmmPredictions.yml", gmmPredictions);
+
+        // Saving the matrix to png requires a threshold
+        cv::threshold(gmmPredictions, outimg, 0, 256, CV_THRESH_BINARY);
+        image1.writeImage("gmmPredictions.png", outimg);
+        outimg.release();       
+        if (debug) image1.log("Beginning GMM Output post processing...\n");
+
+        // Finds the clump boundaries using the gmmPredictions mask
+        vector <vector<cv::Point>> clumpBoundaries = findFinalClumpBoundaries(gmmPredictions, minAreaThreshold);
+
+        // Color the clumps different colors and then write to png file
+        outimg = drawColoredContours(image1.mat, &clumpBoundaries);
+        image1.writeImage("clump_boundaries.png", outimg);
+        if (debug) {
+            //cv::imshow("Clump Segmentation", outimg);
+            //cv::waitKey(0);
+        }
+        outimg.release();
+
+        // Create a Clump object for each clump boundary
+        image1.createClumps(clumpBoundaries);        
+        if (debug) image.log("Beginning MSER nuclei detection...\n");        
                 
-                // double compare = cv::compareHist(firstHist, secondHist, cv::HISTCMP_CORREL );
-                // //https://docs.opencv.org/master/d6/dc7/group__imgproc__hist.html#ga994f53817d621e2e4228fc646342d386
-                // secondHist = createNucleiHist(image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug);
-                // if(compare >= .8){
-                //         Optimized = true;
-                //         //possibly use dlib?
-                        
-                // }
-                for(int i =0; i<this->minArea;i++){
-                     BestminArea = i;
+        for(int i =0; i<this->minArea;i++){
+                BestminArea = i;
                      for(int j = this->minArea; j<this->maxArea;j++){  
                         BestmaxArea = j;
                         for(double k =0.1; k<1;k + .01){
@@ -236,31 +249,24 @@ namespace segment {
                                         for(double m =0.1; m<1;i+.01){
                                                 BestminDiversity = m;
                                                 for(int intensity = 50; intensity < 200; intensity + 1){
-                                                //BestminDiversity = m;
-                                                //secondHist = createNucleiHist(image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug);
-                                                //double compare = cv::compareHist(firstHist, secondHist, cv::HISTCMP_CORREL );
-                                                //https://docs.opencv.org/master/d6/dc7/group__imgproc__hist.html#ga994f53817d621e2e4228fc646342d386
-                                                //secondHist = createNucleiHist(image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug);
-                                                //if(compare >= .8){
-                                                //        Optimized = true;
-                                                //}
-                                                Image image1 = Image(filename1); 
+                                                
+                                                
+                                                //std::cout << "\n about to run nuclei detetion";
                                                 int total = runNucleiDetectionandMask(&image1, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug, intensity, false);
                                                 if(debug == true){
-                                                        std::cout << total;
+                                                        std::cout << "\n" << total;
                                                 }
                                                 // Display and save nuclei to an image
-                                                outimg = image1.getNucleiBoundaries();
+                                                //outimg = image1.getNucleiBoundaries();
                                                 
 
-                                                image1.writeImage("nucleiBoundaries.png", image1.mat);
-                                                outimg.release();
+                                                
                                                 // test nuclei detection on masked image
-                                                //Image image2 = Image("nucleiBoundaries.png"); 
+                                                Image image2 = image1; 
 
-                                                int total2 = runNucleiDetectionandMask(&image1, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug, intensity, true);
+                                                int total2 = runNucleiDetectionandMask(&image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug, intensity, true);
                                                 if(debug == true){
-                                                        std::cout << total;
+                                                        std::cout << "\n" << total2;
                                                 }
                                                 //system("pause");
                                                 if (total2 ==1){        
@@ -293,7 +299,9 @@ namespace segment {
         this->minDiversity = BestminDiversity;
         this->minCircularity = BestminCircularity;
         std::cout << "Best:" << Bestdelta << " " << BestminArea << " " << BestmaxArea << " " << BestmaxVariation << " " << BestminDiversity << " " << BestminCircularity;
-
+        outimg = image1.getNucleiBoundaries();
+        image.writeImage("nucleiBoundaries.png", outimg);
+        outimg.release();
 
 
     }

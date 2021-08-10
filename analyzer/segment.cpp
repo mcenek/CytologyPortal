@@ -132,7 +132,7 @@ int main (int argc, const char * argv[])
         if (directory.empty() && image.empty()) {
             image = "./images/EDF/EDF000.png";
         }
-        seg.optimizeParameters("images/EDF/testsinglecell.png");
+        //seg.optimizeParameters("images/EDF/testsinglecell.png");
         //seg.optimizeParameters(image,image);
         if (!directory.empty()) {
 

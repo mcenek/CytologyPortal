@@ -176,7 +176,7 @@ namespace segment {
         json nucleiBoundaries;
 
         loadNucleiBoundaries(nucleiBoundaries, image, clumps);
-
+        std::cout << "\n before mask function";
         function<void(Clump *, int)> threadFunction = [&image, &delta, &minArea, &maxArea, &maxVariation, &minDiversity, &minCircularity, &debug, &intensity , &totalNuclei, &test](Clump *clump, int i) {
             if (clump->nucleiBoundariesLoaded) {
                 image->log("Loaded clump %u nuclei from file\n", i);
@@ -187,8 +187,10 @@ namespace segment {
                                                        delta, minArea, maxArea, maxVariation,
                                                        minDiversity, debug);
             clump->nucleiBoundaries = nuclei;
+            std::cout << "\n Program has amde it to mask function";
             if (clump->nucleiBoundaries.size() > 0) {
                 if( test == false){
+                    clump->convertNucleiBoundariesToContours();
                     clump->generateNucleiMasks(intensity);
                     cv::Mat maskedImage;
                     cv::bitwise_and(image->mat,clump->nucleiMask, maskedImage);

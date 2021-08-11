@@ -198,15 +198,15 @@ namespace segment {
         removeClumpsWithoutNuclei(clumps);
 
     }
-     int runNucleiDetectionandMask(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity,
+     cv::Mat runNucleiDetectionandMask(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity,
                             double minCircularity, bool debug, cv::Scalar intensity, bool test) {
         vector<Clump> *clumps = &image->clumps;
         int totalNuclei = 0;
         json nucleiBoundaries;
-
+        cv::Mat toReturn;
         loadNucleiBoundaries(nucleiBoundaries, image, clumps);
         
-        function<void(Clump *, int)> threadFunction = [&image, &delta, &minArea, &maxArea, &maxVariation, &minDiversity, &minCircularity, &debug, &intensity , &totalNuclei, &test](Clump *clump, int i) {
+        function<void(Clump *, int)> threadFunction = [&image, &delta, &minArea, &maxArea, &maxVariation, &minDiversity, &minCircularity, &debug, &intensity , &totalNuclei, &test, &toReturn](Clump *clump, int i) {
             if (clump->nucleiBoundariesLoaded) {
                 image->log("Loaded clump %u nuclei from file\n", i);
                 return;
@@ -220,15 +220,20 @@ namespace segment {
             if (clump->nucleiBoundaries.size() > 0) {
                 if( test == false){
                     //clump->convertNucleiBoundariesToContours();
-                    clump->generateNucleiMasks(intensity);
-                    cv::Mat maskedImage;
-                    cv::bitwise_and(image->mat,clump->nucleiMask, maskedImage);
+                    cv::Mat maskOrigin = clump->generateNucleiMasks();
+                    cv::Mat maskedImage = clump->extract();
+                    maskedImage.convertTo(maskedImage, CV_8U);
+                    cv::cvtColor(maskedImage, maskedImage, cv::COLOR_RGB2GRAY);
+                    cv::bitwise_and(maskedImage,maskOrigin, maskedImage);
+                    std::cout << "\n Now Inverting Mask \n";
                     cv::Mat invertedMask;
-                    cv::bitwise_not(clump->nucleiMask,invertedMask);
+                    cv::bitwise_not(maskOrigin,invertedMask);
                     cv::bitwise_and(invertedMask,intensity, invertedMask);
-                    cv::bitwise_or(maskedImage,invertedMask, image->mat);
+                    cv::bitwise_or(maskedImage,invertedMask, maskedImage);
+                    toReturn = maskedImage;
+
                 }
-                else if( test == true){
+                else if( test == true){ 
                      clump->convertNucleiBoundariesToContours();
                 }
                 clump->filterNuclei(minCircularity);
@@ -263,7 +268,8 @@ namespace segment {
         image->writeJSON("nucleiBoundaries", nucleiBoundaries);
 
         removeClumpsWithoutNuclei(clumps);
-        return totalNuclei;
+        image->totalNuclei = totalNuclei;
+        return toReturn;
         }
 
 }

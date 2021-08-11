@@ -11,7 +11,7 @@ namespace segment {
         this->padding = 1;
         this->mat = readImage();
 
-
+        this->totalNuclei = 0;
         int channels = this->mat.channels();
         int width = this->mat.cols;
         int height = this->mat.rows;

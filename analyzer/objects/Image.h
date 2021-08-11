@@ -15,9 +15,10 @@ namespace segment {
     public:
         cv::Mat mat;
         cv::Mat gmmPredictions;
-
+        //cv::Mat maskedImage; // for use in parameter optimization
         cv::Mat matPadded;
         int padding;
+        int totalNuclei;
 
         boost::filesystem::path path;
         vector<Clump> clumps;

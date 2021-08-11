@@ -285,20 +285,18 @@ namespace segment {
                                                 
                                                 
                                                 //std::cout << "\n about to run nuclei detetion";
-                                                int total = runNucleiDetectionandMask(&image, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug, intensity, false);
-                                                if(debug == true){
-                                                        std::cout << "\n" << total;
-                                                }
+                                                cv::Mat maskedImage = runNucleiDetectionandMask(&image, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug, intensity, false);
+                                                
                                                 
                                                 // test nuclei detection on masked image
-                                                Image image2 = image; 
-
-                                                int total2 = runNucleiDetectionandMask(&image2, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug, intensity, true);
+                                                
+                                                image.mat = maskedImage;
+                                                cv::Mat test = runNucleiDetectionandMask(&image, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug, intensity, true);
                                                 if(debug == true){
-                                                        std::cout << "\n" << total2;
+                                                        std::cout << "\n" << image.totalNuclei;
                                                 }
                                                 //system("pause");
-                                                if (total2 ==2){        
+                                                if (image.totalNuclei ==2){        
                                                         Optimized = true;
                                                         break;
                                                  }
@@ -320,6 +318,7 @@ namespace segment {
         //}
 
         
+
         
         this->delta = Bestdelta;
         this->minArea = BestminArea;

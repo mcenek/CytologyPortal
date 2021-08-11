@@ -26,8 +26,8 @@ namespace segment {
         vector<vector<cv::Point>> cytoBoundaries;
         bool initCytoBoundariesLoaded = false;
         cv::Mat nucleiAssocs;
-        vector<cv::Mat> nucleiMasks; //Used to avoid re-computing the nucleiMasks
-        cv::Mat nucleiMask; //duplicate mask
+        cv::Mat nucleiMasks; //Used to avoid re-computing the nucleiMasks
+        //cv::Mat nucleiMask; //duplicate mask
         vector<Cell> cells;
         cv::Mat clumpPrior;
         cv::Mat edgeEnforcer;
@@ -54,7 +54,7 @@ namespace segment {
         //void generateNucleiMasks();
         cv::Mat calcClumpPrior();
         vector<vector<cv::Point>> getFinalCellContours();
-        void generateNucleiMasks(cv::Scalar intensity);
+        cv::Mat generateNucleiMasks();
     };
 }
 

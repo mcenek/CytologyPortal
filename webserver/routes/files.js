@@ -5,7 +5,7 @@ const mkdirp = require("mkdirp");
 const path = require("path");
 
 const fileManager = require('../managers/fileManager');
-const preferences = require("../preferences");
+const preferences = require('../preferences');
 const log = require('../log');
 
 const files = function(getRelativeDirectory, getFilePath) {

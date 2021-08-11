@@ -1,10 +1,32 @@
 extends layout
 
 block header
-    link(rel='stylesheet', type='text/css', href='/stylesheets/error.css')
+    link(rel='stylesheet', type='text/css', href='/stylesheets/portal.css')
+    script(type='text/javascript', src='/javascripts/chart.min.js')
+    script(type='text/javascript', src='/javascripts/portal.js')
 
 block content
-
+    div.mdc-card#scatter()
+        canvas#myChart()
+        div#ratio-fields
+            .mdc-text-field#lower-ratio-field
+                input#lower-ratio.mdc-text-field__input(tabindex=0)
+                .mdc-line-ripple
+                label.mdc-floating-label= "Lower Bound"
+            .mdc-text-field#upper-ratio-field
+                input#upper-ratio.mdc-text-field__input(tabindex=1)
+                .mdc-line-ripple
+                label.mdc-floating-label= "Upper Bound"
+            button#show-thumbnails.mdc-button.mdc-button--raised= "Show Thumbnails"
+    br
+    div.mdc-card#thumbnails-card(style="display: hidden;")
+        table
+            tr
+                td
+                    button#thumbnails-prev.mdc-button.mdc-button--raised= "Previous"
+                td#thumbnails
+                td
+                    button#thumbnails-next.mdc-button.mdc-button--raised= "Next"
 block drawer
     aside.mdc-drawer.mdc-top-app-bar--fixed-adjust
         .mdc-drawer__header
@@ -12,11 +34,9 @@ block drawer
         .mdc-drawer__content
             nav.mdc-list
                 a.mdc-list-item.mdc-list-item--activated(href='/portal')
-                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') code
-                    span.mdc-list-item__text= locale.web_portal
-                a.mdc-list-item(href='/files')
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
                     span.mdc-list-item__text= locale.files
-                a.mdc-list-item(href='/upload')
+                a.mdc-list-item(href='/analyze')
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') file_upload
                     span.mdc-list-item__text= locale.upload
+

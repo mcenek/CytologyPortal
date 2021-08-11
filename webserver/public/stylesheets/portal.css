@@ -1,0 +1,33 @@
+body {
+    background-color: #f0f0f0;
+}
+
+#scatter {
+    padding: 16px;
+    margin: 100px;
+}
+
+#thumbnails-card {
+    padding: 16px;
+    margin: 100px;
+}
+
+#lower-ratio-field {
+    float: left;
+    width: 48%;
+    margin-right: 2%;
+}
+
+#upper-ratio-field {
+    float: right;
+    width: 48%;
+    margin-left: 2%;
+}
+
+#ratio-fields {
+    margin-top: 10px;
+}
+
+#show-thumbnails {
+    margin-top: 10px;
+}

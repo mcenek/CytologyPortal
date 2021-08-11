@@ -9,7 +9,6 @@ const tmp = require('tmp-promise');
 const createError = require("http-errors");
 const localeManager = require("./localeManager");
 const log = require("../log");
-const render = require("../render");
 const readify = require("readify");
 
 async function createArchive(directories) {
@@ -156,7 +155,7 @@ async function renderDirectory(directory, relativeDirectory, req, res, next) {
         directory = path.relative(relativeDirectory, directory)
         const re = new RegExp("\\" + path.sep, "g");
         directory = directory.replace(re, "/");
-        await render("directory", {files: data.files, path: directory, baseUrl: req.baseUrl}, req, res, next);
+        await res.render("directory", {files: data.files, path: directory, baseUrl: req.baseUrl});
     } catch (err) {
         log.write(err);
         next(createError(404))
@@ -164,7 +163,7 @@ async function renderDirectory(directory, relativeDirectory, req, res, next) {
 }
 
 async function renderFile(displayName, req, res, next) {
-    return await render("fileViewer", {displayName: encodeURIComponent(displayName)}, req, res, next);
+    return await res.render("fileViewer", {displayName: encodeURIComponent(displayName)});
 }
 
 async function walkDirectoryPreorder(directory, eachFile) {

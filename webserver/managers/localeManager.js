@@ -65,8 +65,12 @@ function get(req) {
     return localeData;
 }
 
-function getHandler() {
-    return handler;
+function getHandler(req, res, next) {
+    return handler(req, res, function() {
+        const localeData = {"locale": get(req)};
+        Object.assign(res.locals, res.locals, localeData);
+        next();
+    });
 }
 
 function isSupported(locale) {

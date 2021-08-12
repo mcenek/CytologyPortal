@@ -20,6 +20,5 @@
     "readify": "^9.0.0",
     "strftime": "^0.10.0",
     "tmp-promise": "^3.0.2"
-  },
-  "devDependencies": {}
+  }
 }

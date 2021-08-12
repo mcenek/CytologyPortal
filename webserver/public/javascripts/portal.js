@@ -1,5 +1,5 @@
 getRequest(location.pathname + "/export.json", function(xmlHttpRequest) {
-    if (xmlHttpRequest.status == 200) {
+    if (xmlHttpRequest.status === 200) {
         const export_data = JSON.parse(xmlHttpRequest.response);
         const nucleiCytoRatios = export_data["nucleiCytoRatios"];
         const thumbnails = export_data["thumbnails"];
@@ -55,6 +55,8 @@ getRequest(location.pathname + "/export.json", function(xmlHttpRequest) {
                 $("#thumbnails").append(`<img src="${location.pathname + "/thumbnails/" + thumbnail}" loading="lazy">`);
             }
         }
+
+
 
         $("#show-thumbnails").click(function() {
             $("#thumbnails-card").show();

@@ -284,16 +284,19 @@ namespace segment {
                                                 for(int intensity = 50; intensity < 200; intensity + 1){
                                                 
                                                 
-                                                //std::cout << "\n about to run nuclei detetion";
-                                                cv::Mat maskedImage = runNucleiDetectionandMask(&image, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug, intensity, false);
+                                                std::cout << "\n about to run nuclei detetion on first image";
+                                                cv::Mat maskedImage = runNucleiDetectionandMask(&image, delta, minArea, maxArea, maxVariation, minDiversity, minCircularity, debug, intensity, false, image.mat);
                                                 
                                                 
                                                 // test nuclei detection on masked image
-                                                
-                                                image.mat = maskedImage;
-                                                cv::Mat test = runNucleiDetectionandMask(&image, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug, intensity, true);
+                                                //outimg = image.getNucleiBoundaries();
+                                                //image.writeImage("nucleiBoundaries.png", maskedImage);
+                                                //outimg.release();
+                                                //image.mat = maskedImage;
+                                                std::cout << "\n about to run nuclei detetion on second image";
+                                                cv::Mat test = runNucleiDetectionandMask(&image, Bestdelta, BestminArea, BestmaxArea, BestmaxVariation, BestminDiversity, BestminCircularity, debug, intensity, true, maskedImage);
                                                 if(debug == true){
-                                                        std::cout << "\n" << image.totalNuclei;
+                                                        std::cout << "\n Total Nuclei \n" << image.totalNuclei;
                                                 }
                                                 //system("pause");
                                                 if (image.totalNuclei ==2){        

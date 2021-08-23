@@ -199,19 +199,22 @@ namespace segment {
 
     }
      cv::Mat runNucleiDetectionandMask(Image *image, int delta, int minArea, int maxArea, double maxVariation, double minDiversity,
-                            double minCircularity, bool debug, cv::Scalar intensity, bool test) {
+                            double minCircularity, bool debug, cv::Scalar intensity, bool test, cv::Mat testMat) {
         vector<Clump> *clumps = &image->clumps;
         int totalNuclei = 0;
         json nucleiBoundaries;
         cv::Mat toReturn;
         loadNucleiBoundaries(nucleiBoundaries, image, clumps);
         
-        function<void(Clump *, int)> threadFunction = [&image, &delta, &minArea, &maxArea, &maxVariation, &minDiversity, &minCircularity, &debug, &intensity , &totalNuclei, &test, &toReturn](Clump *clump, int i) {
+        function<void(Clump *, int)> threadFunction = [&image, &delta, &minArea, &maxArea, &maxVariation, &minDiversity, &minCircularity, &debug, &intensity , &totalNuclei, &test, &toReturn, &testMat](Clump *clump, int i) {
             if (clump->nucleiBoundariesLoaded) {
                 image->log("Loaded clump %u nuclei from file\n", i);
                 return;
             }
             cv::Mat clumpMat = clump->extract();
+            if( test == true){
+                clumpMat = testMat;
+            }
             vector<vector<cv::Point>> nuclei = runMser(&clumpMat, clump->offsetContour,
                                                        delta, minArea, maxArea, maxVariation,
                                                        minDiversity, debug);
@@ -234,7 +237,7 @@ namespace segment {
 
                 }
                 else if( test == true){ 
-                     clump->convertNucleiBoundariesToContours();
+                     //clump->convertNucleiBoundariesToContours();
                 }
                 clump->filterNuclei(minCircularity);
                 //totalNuclei + clump->nucleiCenters.size();

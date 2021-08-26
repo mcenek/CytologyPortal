@@ -69,7 +69,7 @@ $(document).ready(function() {
         $("#navigation-bar").append(`<td><button onclick="window.location.href = \`${currentPath}\`;" style='font-size: 16px; margin-top: 7px; margin-left: 5px; border: none; outline: none; background-color: transparent'><h4>${getPathDisplayName(directoryIndex)}</h4></button></td>`);
     }
 
-    $("#navigation-bar").append(`<td hidden id='actionButtons' style='position: absolute; right: 7px;'><button id='download' class=\"mdc-icon-button material-icons\">cloud_download</button><button id='delete' class=\"mdc-icon-button material-icons\">delete</button></td>`);
+    $("#navigation-bar").append(`<td hidden id='actionButtons' style='position: absolute; right: 7px;'><button id='download' class=\"mdc-icon-button material-icons\">file_download</button><button id='delete' class=\"mdc-icon-button material-icons\">delete</button></td>`);
 
     let iconButtons = document.getElementsByClassName('mdc-icon-button');
     for (let i = 0; i < iconButtons.length; i++) {
@@ -206,26 +206,6 @@ $(document).ready(function() {
         let fileLink = encodeURIComponent(files[fileId].name);
         share({"data": {"filePath": [location.pathname, fileLink].join("/")}});
     });
-
-    // Drag enter
-    $("html").on('dragenter', function (e) {
-
-    });
-
-
-
-    $("html").on("dragover", function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-    });
-
-    $("html").on("drop", function(e) {
-        const files = e.originalEvent.dataTransfer.files;
-        uploadFiles(files);
-        e.preventDefault(); e.stopPropagation();
-    });
-
-
 
     function fileClick(file) {
         $(".file").css("background-color", "");

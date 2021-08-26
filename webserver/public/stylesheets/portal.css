@@ -2,6 +2,10 @@ body {
     background-color: #f0f0f0;
 }
 
+#loading {
+    background-color: #333333;
+}
+
 #scatter {
     padding: 16px;
     margin: 100px;

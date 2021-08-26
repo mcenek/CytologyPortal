@@ -23,12 +23,11 @@ block drawer
                 a.mdc-list-item.mdc-list-item--activated(href=baseUrl)#file-manager
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
                     span.mdc-list-item__text= locale.files
-                a.mdc-list-item#upload
-                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') cloud_upload
+                a.mdc-list-item(href="/analyze")
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') file_upload
                     span.mdc-list-item__text= locale.upload
-                input#uploadButton(hidden type="file" multiple)
                 a.mdc-list-item#download-current-dir
-                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') cloud_download
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') file_download
                     span.mdc-list-item__text= locale.download
                 a.mdc-list-item(href=baseUrl + "/.recycle")
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') delete

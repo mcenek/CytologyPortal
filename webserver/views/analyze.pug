@@ -2,12 +2,104 @@ extends layout
 
 block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/analyze.css')
+    script.
+        Object.assign(locale, {
+            upload_required: "#{locale.upload_required}",
+        });
     script(type='text/javascript', src='/javascripts/analyze.js')
 
 block content
     br
-    button#upload.mdc-button.mdc-button--raised= locale.upload
-    input#uploadButton(hidden type="file" multiple)
+    table
+        tr
+            td
+                button#analyze-upload.mdc-button.mdc-button--raised= locale.select_image
+            td
+                h3#file-name.mdc-typography.mdc-typography--subtitle2
+    input#analyze-uploadButton(hidden type="file")
+    br
+
+    h3.mdc-typography.mdc-typography--subtitle2= locale.quickshift_params
+    .mdc-text-field
+        input#kernel-size.mdc-text-field__input(tabindex=0 value=2)
+        .mdc-line-ripple
+        label.mdc-floating-label= locale.kernel_size
+    .mdc-text-field
+        input#max-dist.mdc-text-field__input(tabindex=1 value=4)
+        .mdc-line-ripple
+        label.mdc-floating-label= locale.max_dist
+
+    br
+    h3.mdc-typography.mdc-typography--subtitle2= locale.canny_edge_detection_params
+
+    .mdc-text-field
+        input#threshold1.mdc-text-field__input(tabindex=2 value=20)
+        .mdc-line-ripple
+        label.mdc-floating-label= locale.threshold1
+    .mdc-text-field
+        input#threshold2.mdc-text-field__input(tabindex=3 value=40)
+        .mdc-line-ripple
+        label.mdc-floating-label= locale.threshold2
+    br
+
+    h3.mdc-typography.mdc-typography--subtitle2= locale.clump_segmentation_params
+    .mdc-text-field
+        input#gmm-iterations.mdc-text-field__input(tabindex=4 value=10)
+        .mdc-line-ripple
+        label.mdc-floating-label= locale.iterations
+    .mdc-text-field
+        input#min-area-threshold.mdc-text-field__input(tabindex=5 value=10)
+        .mdc-line-ripple
+        label.mdc-floating-label= locale.min_area_threshold
+    br
+
+    h3.mdc-typography.mdc-typography--subtitle2= locale.mser_params
+    .mdc-text-field
+        input#delta.mdc-text-field__input(tabindex=6 value=3)
+        .mdc-line-ripple
+        label.mdc-floating-label= locale.delta
+    .mdc-text-field
+        input#min-area.mdc-text-field__input(tabindex=7 value=120)
+        .mdc-line-ripple
+        label.mdc-floating-label= locale.min_area
+    .mdc-text-field
+        input#max-area.mdc-text-field__input(tabindex=8 value=600)
+        .mdc-line-ripple
+        label.mdc-floating-label= locale.max_area
+    .mdc-text-field
+        input#max-variation.mdc-text-field__input(tabindex=9 value=0.3)
+        .mdc-line-ripple
+        label.mdc-floating-label= locale.max_variation
+    .mdc-text-field
+        input#min-diversity.mdc-text-field__input(tabindex=10 value=0.25)
+        .mdc-line-ripple
+        label.mdc-floating-label= locale.min_diversity
+    .mdc-text-field
+        input#min-circularity.mdc-text-field__input(tabindex=11 value=0)
+        .mdc-line-ripple
+        label.mdc-floating-label= locale.min_circularity
+    br
+    h3.mdc-typography.mdc-typography--subtitle2= locale.drlse_params
+    .mdc-text-field
+        input#timestep.mdc-text-field__input(tabindex=12 value=5)
+        .mdc-line-ripple
+        label.mdc-floating-label= locale.timestep
+    .mdc-text-field
+        input#epsilon.mdc-text-field__input(tabindex=13 value=1.5)
+        .mdc-line-ripple
+        label.mdc-floating-label= locale.epsilon
+    .mdc-text-field
+        input#mu.mdc-text-field__input(tabindex=14 value=0.04)
+        .mdc-line-ripple
+        label.mdc-floating-label= locale.mu
+    .mdc-text-field
+        input#kappa.mdc-text-field__input(tabindex=15 value=13)
+        .mdc-line-ripple
+        label.mdc-floating-label= locale.kappa
+    .mdc-text-field
+        input#chi.mdc-text-field__input(tabindex=16 value=3)
+        .mdc-line-ripple
+        label.mdc-floating-label= locale.chi
     br
     br
     button#analyze.mdc-button.mdc-button--raised= locale.analyze
@@ -21,6 +113,6 @@ block drawer
                 a.mdc-list-item(href='/portal')
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
                     span.mdc-list-item__text= locale.files
-                a.mdc-list-item(href='/analyze')
+                a.mdc-list-item.mdc-list-item--activated(href='/analyze')
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') file_upload
                     span.mdc-list-item__text= locale.upload

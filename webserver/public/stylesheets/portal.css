@@ -8,12 +8,19 @@ body {
 
 #scatter {
     padding: 16px;
-    margin: 100px;
+    margin: 20px;
+}
+
+#info {
+    padding: 16px;
+    margin: 20px;
+    margin-left: 0;
 }
 
 #thumbnails-card {
     padding: 16px;
-    margin: 100px;
+    margin: 20px;
+    margin-top: 10px;
 }
 
 #lower-ratio-field {

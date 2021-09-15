@@ -9,18 +9,28 @@ block content
     div#loading
 
     div#content(style="display: none;")
-        div.mdc-card#scatter()
-            canvas#myChart()
-            div#ratio-fields
-                .mdc-text-field#lower-ratio-field
-                    input#lower-ratio.mdc-text-field__input(tabindex=0)
-                    .mdc-line-ripple
-                    label.mdc-floating-label= "Lower Bound"
-                .mdc-text-field#upper-ratio-field
-                    input#upper-ratio.mdc-text-field__input(tabindex=1)
-                    .mdc-line-ripple
-                    label.mdc-floating-label= "Upper Bound"
-                button#show-thumbnails.mdc-button.mdc-button--raised= "Show Thumbnails"
+
+        div()
+            table
+                tr
+                    td
+                        div.mdc-card#scatter(style="")
+                            canvas#myChart()
+                            div#ratio-fields
+                                .mdc-text-field#lower-ratio-field
+                                    input#lower-ratio.mdc-text-field__input(tabindex=0)
+                                    .mdc-line-ripple
+                                    label.mdc-floating-label= "Lower Bound"
+                                .mdc-text-field#upper-ratio-field
+                                    input#upper-ratio.mdc-text-field__input(tabindex=1)
+                                    .mdc-line-ripple
+                                    label.mdc-floating-label= "Upper Bound"
+                                button#show-thumbnails.mdc-button.mdc-button--raised= "Show Thumbnails"
+                    td
+                        div.mdc-card#info()
+                            p Info
+
+        br
         br
         div.mdc-card#thumbnails-card(style="display: none;")
             table
@@ -31,7 +41,7 @@ block content
                     td
                         button#thumbnails-next.mdc-button.mdc-button--raised= "Next"
 block drawer
-    aside.mdc-drawer.mdc-top-app-bar--fixed-adjust
+    aside.mdc-drawer.mdc-top-app-bar--fixed-adjust.mdc-drawer--modal
         .mdc-drawer__header
             h3.mdc-drawer__title= locale.web_portal
         .mdc-drawer__content

@@ -49,9 +49,29 @@ getRequest(location.pathname + "/export.json", function(xmlHttpRequest) {
                 }
             });
 
-
-
-        });
+            let thumbnailMin = thumbnails[sorted[sorted.length - 1]]
+            let thumbnailMax = thumbnails[sorted[0]]
+            $("#info").append(`
+                <table>
+                    <tr>
+                        <td>
+                            <img class="thumbnail" height=200px src="${location.pathname + "/thumbnails/" + thumbnailMin}" loading="lazy">
+                        </td>
+                        <td>
+                            <img class="thumbnail" height=200px src="${location.pathname + "/thumbnails/" + thumbnailMax}" loading="lazy">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <p style="text-align: center">Biggest nuclei to cyto ratio</p>
+                        </td>
+                        <td>
+                            <p style="text-align: center">Smallest nuclei to cyto ratio</p>
+                        </td>
+                    </tr>
+                </table>
+            `)
+       });
 
         let shownThumbnails;
         let shownThumbnailsIdx;
@@ -64,13 +84,32 @@ getRequest(location.pathname + "/export.json", function(xmlHttpRequest) {
 
             let shownThumbnailsData = [];
             for (let i = 0; i < Math.min(thumbnailsPerPage, shownThumbnails.length); i++) {
-                const thumbnail = shownThumbnails[i + thumbnailsPerPage * page];
-                const nucleiCytoRatio = nucleiCytoRatios[sorted[shownThumbnailsIdx[i + thumbnailsPerPage * page]]];
-                shownThumbnailsData.push({x: shownThumbnailsIdx[i + thumbnailsPerPage * page], y: nucleiCytoRatio});
-                $("#thumbnails").append(`<img class="thumbnail" src="${location.pathname + "/thumbnails/" + thumbnail}" loading="lazy">`);
+                const index = i + thumbnailsPerPage * page;
+                const thumbnail = shownThumbnails[index];
+                const nucleiCytoRatio = Math.round(nucleiCytoRatios[sorted[shownThumbnailsIdx[index]]] * 10000) / 10000;
+                if (!thumbnail) continue
+                shownThumbnailsData.push({x: shownThumbnailsIdx[index], y: nucleiCytoRatio});
+                $("#thumbnails").append(`
+                    <table style="display: inline">
+                        <tr>
+                            <td>
+                                <div style="text-align: center">
+                                    <img class="thumbnail" src="${location.pathname + "/thumbnails/" + thumbnail}" loading="lazy">
+                                </div>
+                            </td>
+                            
+                        </tr>
+                        <tr>
+                            <td>
+                                <p style="float: left">${nucleiCytoRatio}</p>
+                                <button style="float: left" id='good_segmentation' name="${index}" class="mdc-icon-button material-icons">thumb_up</button>
+                                <button style="float: left" id='bad_segmentation' name="${index}" class="mdc-icon-button material-icons">thumb_down</button>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                `);
             }
-
-            console.log(shownThumbnailsData)
 
             const shownLabel = "Shown Thumbnails";
             if (myChart.data.datasets[0].label == shownLabel) {

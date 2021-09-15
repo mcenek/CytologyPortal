@@ -1,6 +1,6 @@
 $(document).ready(function() {
-    checkMobileResize();
-    $(window).resize(checkMobileResize);
+    //checkMobileResize();
+    //$(window).resize(checkMobileResize);
 
     const topAppBar = mdc.topAppBar.MDCTopAppBar.attachTo(document.querySelector('.mdc-top-app-bar'));
 

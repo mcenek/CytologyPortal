@@ -2,9 +2,6 @@
 #include "InitialCellSegmentation.h"
 #include "SegmenterTools.h"
 #include "../objects/ClumpsThread.h"
-#include <thread>
-#include <future>
-#include <chrono>
 
 using namespace std;
 

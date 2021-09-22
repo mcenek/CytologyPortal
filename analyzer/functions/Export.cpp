@@ -18,6 +18,14 @@ namespace segment {
 
     }
 
+    json contourToJson(vector<cv::Point> contour) {
+        json converted;
+        for (cv::Point &point : contour) {
+            converted.push_back({point.x, point.y});
+        }
+        return converted;
+    }
+
     void exportResults(Image *image) {
         json results;
 
@@ -43,8 +51,7 @@ namespace segment {
                 cv::drawContours(thumbnail, vector<vector<cv::Point>>{cell->finalContour}, 0, cv::Scalar(255, 0, 0), 2);
                 cv::drawContours(thumbnail, vector<vector<cv::Point>>{cell->nucleusBoundary}, 0, cv::Scalar(0, 0, 255), 2);
 
-                cv::Rect cellBounding = cv::boundingRect(cell->cytoBoundary);
-                thumbnail = thumbnail(cellBounding);
+                thumbnail = thumbnail(cell->boundingBoxWithNeighbors);
                 string fileName = to_string(i);
                 fileName += "_" + to_string((int) round(cell->phiArea));
                 fileName += "_" + to_string((int) round(cell->nucleusArea));

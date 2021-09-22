@@ -102,14 +102,24 @@ getRequest(location.pathname + "/export.json", function(xmlHttpRequest) {
                         <tr>
                             <td>
                                 <p style="float: left">${nucleiCytoRatio}</p>
-                                <button style="float: left" id='good_segmentation' name="${index}" class="mdc-icon-button material-icons">thumb_up</button>
-                                <button style="float: left" id='bad_segmentation' name="${index}" class="mdc-icon-button material-icons">thumb_down</button>
+                                <button style="float: left" name="${index}" class="good_segmentation mdc-icon-button material-icons">thumb_up</button>
+                                <button style="float: left" name="${index}" class="bad_segmentation mdc-icon-button material-icons">thumb_down</button>
                             </td>
                         </tr>
                     </table>
                     
                 `);
             }
+
+            $(".good_segmentation").click(function() {
+                $(this).prop("disabled", true)
+                showSnackbar(basicSnackbar, "Thanks for the feedback!")
+            })
+
+            $(".bad_segmentation").click(function() {
+                $(this).prop("disabled", true)
+                showSnackbar(basicSnackbar, "Thanks for the feedback!")
+            })
 
             const shownLabel = "Shown Thumbnails";
             if (myChart.data.datasets[0].label == shownLabel) {
@@ -121,6 +131,8 @@ getRequest(location.pathname + "/export.json", function(xmlHttpRequest) {
                 backgroundColor: 'rgb(0, 99, 132)'
             });
             myChart.update();
+
+
         }
 
 
@@ -156,6 +168,7 @@ getRequest(location.pathname + "/export.json", function(xmlHttpRequest) {
 
 
         $("#content").show();
+
 
     } else if (xmlHttpRequest.status == 404) {
 

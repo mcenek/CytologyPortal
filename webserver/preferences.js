@@ -5,7 +5,6 @@ const configurationFile = "preferences.json";
 
 let defaultConfiguration = {
     files: "../images",
-    upload: "../analyzer/images",
     port: 443,
     httpRedirectServer: false,
     keys: {

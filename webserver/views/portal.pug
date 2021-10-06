@@ -3,32 +3,42 @@ extends layout
 block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/portal.css')
     script(type='text/javascript', src='/javascripts/chart.min.js')
+    script.
+        let preferences = !{JSON.stringify(preferences)};
     script(type='text/javascript', src='/javascripts/portal.js')
 
 block content
     div#loading
 
-    div#content(style="display: none;")
+    div#content(style="display: none")
 
-        div()
+        div
             table
                 tr
                     td
-                        div.mdc-card#scatter(style="")
-                            canvas#myChart()
+                        div.mdc-card#scatter()
+                            canvas#myChart(style="height: 300px")
                             div#ratio-fields
-                                .mdc-text-field#lower-ratio-field
-                                    input#lower-ratio.mdc-text-field__input(tabindex=0)
-                                    .mdc-line-ripple
-                                    label.mdc-floating-label= "Lower Bound"
-                                .mdc-text-field#upper-ratio-field
-                                    input#upper-ratio.mdc-text-field__input(tabindex=1)
-                                    .mdc-line-ripple
-                                    label.mdc-floating-label= "Upper Bound"
+                                table
+                                    tr
+                                        td#lower-bound-thumbnail
+                                        td
+                                            .mdc-text-field#lower-ratio-field
+                                                input#lower-ratio.mdc-text-field__input(tabindex=0)
+                                                .mdc-line-ripple
+                                                label.mdc-floating-label= "Lower Bound"
+                                        td
+                                            .mdc-text-field#upper-ratio-field
+                                                input#upper-ratio.mdc-text-field__input(tabindex=1)
+                                                .mdc-line-ripple
+                                                label.mdc-floating-label= "Upper Bound"
+                                        td#upper-bound-thumbnail
                                 button#show-thumbnails.mdc-button.mdc-button--raised= "Show Thumbnails"
                     td
-                        div.mdc-card#info()
-                            p Info
+                        pre.mdc-card#info(style="height:450px; overflow: scroll;")
+
+
+
 
         br
         br
@@ -36,10 +46,10 @@ block content
             table
                 tr
                     td
-                        button#thumbnails-prev.mdc-button.mdc-button--raised= "Previous"
+                        button#thumbnails-prev.mdc-icon-button.material-icons= "arrow_back"
                     td#thumbnails
                     td
-                        button#thumbnails-next.mdc-button.mdc-button--raised= "Next"
+                        button#thumbnails-next.mdc-icon-button.material-icons= "arrow_forward"
 block drawer
     aside.mdc-drawer.mdc-top-app-bar--fixed-adjust.mdc-drawer--modal
         .mdc-drawer__header

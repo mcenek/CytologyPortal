@@ -12,7 +12,12 @@ let defaultConfiguration = {
             cert: "./keys/https/cert.crt",
             key: "./keys/https/key.key",
         },
+    },
+    portal: {
+        minRatio: 0.01,
+        maxRatio: 0.3
     }
+
 };
 
 let configuration;
@@ -43,6 +48,18 @@ function get(property) {
         }
         return configuration[property];
     }
+}
+
+function set(property, value) {
+    if (configuration.hasOwnProperty(property)) {
+        configuration[property] = value;
+        save();
+        log.write("Property '" + property + "' updated")
+        return true;
+    } else {
+        log.write("Property '" + property + "' does not exist");
+    }
+    return false;
 }
 
 function init() {
@@ -79,6 +96,7 @@ function writeJSON(filePath, json) {
 
 module.exports = {
     get: get,
+    set: set,
     init: init,
     setDefaultConfiguration: setDefaultConfiguration
 };

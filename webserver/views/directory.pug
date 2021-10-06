@@ -3,10 +3,6 @@ extends layout
 block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/directory.css')
     script.
-        Object.assign(locale, {
-            confirm_delete: "#{locale.confirm_delete}",
-            error_deleting: "#{locale.error_deleting}"
-        });
         let folderContents = !{JSON.stringify(files)};
         let path = !{JSON.stringify(path)};
         let path_decrypted = "#{path_decrypted}";

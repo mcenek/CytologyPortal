@@ -10,6 +10,7 @@ const routes = {
     "/": require('./routes/index'),
     "/analyze": require('./routes/analyze'),
     "/portal": require('./routes/portal'),
+    "/preferences": require('./routes/preferences')
 }
 
 let app = express();

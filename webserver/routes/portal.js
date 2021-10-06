@@ -14,7 +14,7 @@ router.get('/:image', async function(req, res, next) {
     const image = req.params.image;
     if (image.startsWith(".recycle")) return next();
     try {
-        res.render('portal', {image: image});
+        res.render('portal', {image: image, preferences: preferences.get("portal")});
     } catch {
         return next();
     }

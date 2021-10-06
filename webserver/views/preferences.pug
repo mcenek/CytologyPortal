@@ -1,0 +1,17 @@
+extends layout
+
+block header
+    link(rel='stylesheet', type='text/css', href='/stylesheets/preferences.css')
+    script.
+        let preferences = !{JSON.stringify(preferences)};
+    script(type='text/javascript', src='/javascripts/preferences.js')
+
+block content
+    table#preferences
+        tbody#preferences-table
+            tr#preferences_input.first-row
+                td
+                    h4.first-column= "Key"
+                td
+                    h4= "Value"
+

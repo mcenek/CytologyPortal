@@ -2,10 +2,6 @@ extends layout
 
 block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/analyze.css')
-    script.
-        Object.assign(locale, {
-            upload_required: "#{locale.upload_required}",
-        });
     script(type='text/javascript', src='/javascripts/analyze.js')
 
 block content

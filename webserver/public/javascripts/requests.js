@@ -1,10 +1,13 @@
 let request = function(method, url, data, callback, authorization, contentType) {
+    console.log(typeof data)
     let xmlHttpRequest = new XMLHttpRequest();
     xmlHttpRequest.open(method, url);
     if (authorization != null) xmlHttpRequest.setRequestHeader("Authorization", authorization);
     xmlHttpRequest.onreadystatechange = function () {
         if (xmlHttpRequest.readyState === XMLHttpRequest.DONE) {
-            callback(xmlHttpRequest);
+            if (typeof callback === "function") {
+                callback(xmlHttpRequest);
+            }
         }
     };
 

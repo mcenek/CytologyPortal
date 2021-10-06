@@ -2,8 +2,20 @@ getRequest(location.pathname + "/export.json", function(xmlHttpRequest) {
     if (xmlHttpRequest.status === 200) {
 
         const export_data = JSON.parse(xmlHttpRequest.response);
-        const nucleiCytoRatios = export_data["nucleiCytoRatios"];
-        const thumbnails = export_data["thumbnails"];
+        let nucleiCytoRatios = export_data["nucleiCytoRatios"];
+        let thumbnails = export_data["thumbnails"];
+
+
+        for (let i = 0; i < nucleiCytoRatios.length; i++) {
+            const nucleiRatio = nucleiCytoRatios[i];
+
+            if (nucleiRatio < preferences.minRatio || nucleiRatio > preferences.maxRatio) {
+                nucleiCytoRatios.splice(i, 1);
+                thumbnails.splice(i, 1);
+                i--;
+            }
+        }
+
 
 
         const sorted = [...Array(thumbnails.length).keys()];
@@ -12,11 +24,10 @@ getRequest(location.pathname + "/export.json", function(xmlHttpRequest) {
         })
 
         const chart_data = [];
-        const sortedNucleiCytoRatios = [...nucleiCytoRatios].sort();
-
 
         for (const i in thumbnails) {
-            chart_data.push({x: i, y: nucleiCytoRatios[sorted[i]]});
+            const nucleiRatio = nucleiCytoRatios[sorted[i]];
+            chart_data.push({x: i, y: nucleiRatio});
         }
 
         let myChart;
@@ -49,34 +60,14 @@ getRequest(location.pathname + "/export.json", function(xmlHttpRequest) {
                 }
             });
 
-            let thumbnailMin = thumbnails[sorted[sorted.length - 1]]
-            let thumbnailMax = thumbnails[sorted[0]]
-            $("#info").append(`
-                <table>
-                    <tr>
-                        <td>
-                            <img class="thumbnail" height=200px src="${location.pathname + "/thumbnails/" + thumbnailMin}" loading="lazy">
-                        </td>
-                        <td>
-                            <img class="thumbnail" height=200px src="${location.pathname + "/thumbnails/" + thumbnailMax}" loading="lazy">
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <p style="text-align: center">Biggest nuclei to cyto ratio</p>
-                        </td>
-                        <td>
-                            <p style="text-align: center">Smallest nuclei to cyto ratio</p>
-                        </td>
-                    </tr>
-                </table>
-            `)
+
        });
 
         let shownThumbnails;
         let shownThumbnailsIdx;
 
         let page = 0;
+
 
         const thumbnailsPerPage = 20;
         function displayThumbnails(page) {
@@ -86,7 +77,8 @@ getRequest(location.pathname + "/export.json", function(xmlHttpRequest) {
             for (let i = 0; i < Math.min(thumbnailsPerPage, shownThumbnails.length); i++) {
                 const index = i + thumbnailsPerPage * page;
                 const thumbnail = shownThumbnails[index];
-                const nucleiCytoRatio = Math.round(nucleiCytoRatios[sorted[shownThumbnailsIdx[index]]] * 10000) / 10000;
+                let nucleiCytoRatio = nucleiCytoRatios[sorted[shownThumbnailsIdx[index]]];
+                nucleiCytoRatio = Math.round(nucleiCytoRatio * 10000) / 10000;
                 if (!thumbnail) continue
                 shownThumbnailsData.push({x: shownThumbnailsIdx[index], y: nucleiCytoRatio});
                 $("#thumbnails").append(`
@@ -122,7 +114,7 @@ getRequest(location.pathname + "/export.json", function(xmlHttpRequest) {
             })
 
             const shownLabel = "Shown Thumbnails";
-            if (myChart.data.datasets[0].label == shownLabel) {
+            if (myChart.data.datasets[0].label === shownLabel) {
                 myChart.data.datasets.shift();
             }
             myChart.data.datasets.splice(0, 0, {
@@ -150,6 +142,18 @@ getRequest(location.pathname + "/export.json", function(xmlHttpRequest) {
                     shownThumbnailsIdx.push(i);
                 }
             }
+
+            let thumbnailMin = thumbnails[sorted[shownThumbnailsIdx[0]]];
+            let thumbnailMax = thumbnails[sorted[shownThumbnailsIdx[shownThumbnailsIdx.length - 1]]];
+            $("#lower-bound-thumbnail").html(`
+                <img class="thumbnail" height=50px src="${location.pathname + "/thumbnails/" + thumbnailMin}" loading="lazy">               
+            `)
+
+            $("#upper-bound-thumbnail").html(` 
+                <img class="thumbnail" height=50px src="${location.pathname + "/thumbnails/" + thumbnailMax}" loading="lazy">              
+            `)
+
+
             displayThumbnails(page)
         });
 
@@ -170,10 +174,17 @@ getRequest(location.pathname + "/export.json", function(xmlHttpRequest) {
         $("#content").show();
 
 
-    } else if (xmlHttpRequest.status == 404) {
+    } else if (xmlHttpRequest.status === 404) {
 
     }
 })
 
+$(document).ready(function() {
+    getRequest(location.pathname + "/log.txt", function (xmlHttpRequest) {
+        console.log(xmlHttpRequest.status);
+        if (xmlHttpRequest.status === 200) {
+            $("#info").append(xmlHttpRequest.responseText.trim())
 
-
+        }
+    });
+});

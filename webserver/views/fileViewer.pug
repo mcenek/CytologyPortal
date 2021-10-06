@@ -3,16 +3,6 @@ extends layout
 block header
     link(rel='stylesheet', type='text/css', href='/stylesheets/fileViewer.css')
     script.
-        Object.assign(locale, {
-            confirm_delete: "#{locale.confirm_delete}",
-            error_deleting: "#{locale.error_deleting}",
-            incorrect_password: "#{locale.incorrect_password}",
-            cant_open_file_type: "#{locale.cant_open_file_type}",
-            no_connection: "#{locale.no_connection}",
-            unsaved_changes: "#{locale.unsaved_changes}",
-            edit: "#{locale.edit}",
-            save: "#{locale.save}"
-        });
         let displayName = "#{displayName}";
     script(type='text/javascript', src= "/javascripts/fileViewer.js")
 

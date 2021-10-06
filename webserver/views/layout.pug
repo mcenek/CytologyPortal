@@ -12,12 +12,7 @@ html
         script.
             const currentID = "#{id}";
             const currentUsername = "#{username}";
-            const locale = {
-                app_name: "#{locale.app_name}",
-                no: "#{locale.no}",
-                ok: "#{locale.ok}",
-                yes: "#{locale.yes}"
-            }
+            const locale = !{JSON.stringify(locale)};
         script(type='text/javascript', src='/javascripts/jquery-3.6.0.min.js')
         script(type='text/javascript', src='/javascripts/material-components-web.min.js')
         script(type='text/javascript', src='/javascripts/requests.js')

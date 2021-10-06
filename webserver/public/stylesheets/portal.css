@@ -15,8 +15,7 @@ body {
 
 #thumbnails-card {
     padding: 16px;
-    margin: 20px;
-    margin-top: 10px;
+    margin: 10px 20px 20px;
 }
 
 #lower-ratio-field {
@@ -46,9 +45,8 @@ body {
 }
 
 #show-thumbnails {
-    margin: 0 auto;
+    margin: 10px auto;
     display: block;
-
 }
 
 @keyframes spin {
@@ -65,6 +63,12 @@ body {
     margin-top: 10px;
 }
 
-#show-thumbnails {
-    margin-top: 10px;
+#thumbnails-prev {
+    border-radius: 50%;
+    margin-right: 20px;
+}
+
+#thumbnails-next {
+    border-radius: 50%;
+    margin-left: 20px;
 }

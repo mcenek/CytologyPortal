@@ -15,7 +15,8 @@ let defaultConfiguration = {
     },
     portal: {
         minRatio: 0.01,
-        maxRatio: 0.3
+        maxRatio: 0.3,
+        thumbnails_per_page: 20,
     }
 
 };

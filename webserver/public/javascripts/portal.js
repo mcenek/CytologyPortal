@@ -5,7 +5,7 @@ let sorted;
 let page = 0;
 let shownThumbnails;
 let shownThumbnailsIdx;
-const thumbnailsPerPage = 20;
+const thumbnailsPerPage = preferences.thumbnails_per_page;
 
 $(document).ready(async () => {
     let exportXhr = await getRequest(location.pathname + "/export.json");

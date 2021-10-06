@@ -29,7 +29,7 @@ block content
         table
             tr
                 td
-                    div.mdc-card#scatter
+                    div.mdc-card#scatter(style="height:450px;")
                         canvas#myChart(style="height: 300px")
                         div#ratio-fields
                             table(style="margin: 0 auto;")
@@ -53,16 +53,15 @@ block content
 
 
 
-        br
-        br
+
         div.mdc-card#thumbnails-card
             table
                 tr
                     td
-                        button#thumbnails-prev.mdc-icon-button.material-icons= "arrow_back"
+                        button#thumbnails-prev.mdc-button--raised.mdc-icon-button.material-icons= "arrow_back"
                     td#thumbnails
                     td
-                        button#thumbnails-next.mdc-icon-button.material-icons= "arrow_forward"
+                        button#thumbnails-next.mdc-button--raised.mdc-icon-button.material-icons= "arrow_forward"
 block drawer
     aside.mdc-drawer.mdc-top-app-bar--fixed-adjust.mdc-drawer--modal
         .mdc-drawer__header

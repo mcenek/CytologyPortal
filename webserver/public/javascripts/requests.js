@@ -1,49 +1,58 @@
-let request = function(method, url, data, callback, authorization, contentType) {
-    console.log(typeof data)
-    let xmlHttpRequest = new XMLHttpRequest();
-    xmlHttpRequest.open(method, url);
-    if (authorization != null) xmlHttpRequest.setRequestHeader("Authorization", authorization);
-    xmlHttpRequest.onreadystatechange = function () {
-        if (xmlHttpRequest.readyState === XMLHttpRequest.DONE) {
-            if (typeof callback === "function") {
-                callback(xmlHttpRequest);
-            }
-        }
-    };
-
-    if (data == null) {
-        xmlHttpRequest.send();
-    } else {
-        if (contentType === undefined) contentType = "application/json";
-        if (contentType !== null) xmlHttpRequest.setRequestHeader("Content-Type", contentType);
-
-        xmlHttpRequest.send(data);
+function request(method, url, data, authorization, contentType) {
+    if (!contentType) {
+        contentType = "application/json";
+        if (typeof data == "object") data = JSON.stringify(data);
     }
-};
+    const headers = {}
+    if (authorization) {
+        headers["Authorization"] = authorization
+    }
+    return new Promise((resolve, reject) => {
+        $.ajax({
+            url: url,
+            type: method,
+            data: data,
+            headers: headers,
+            contentType: contentType,
+            complete: (jqXHR) => {
+                try {
+                    jqXHR.responseJSON = JSON.parse(jqXHR.responseText);
+                } catch {}
+                resolve({
+                    status: jqXHR.status,
+                    statusText: jqXHR.statusText,
+                    responseText: jqXHR.responseText,
+                    responseJSON: jqXHR.responseJSON
+                })
+            }
+        });
+    })
 
-let getRequest = function(url, callback, authorization) {
-    request("GET", url, null, callback, authorization);
-};
+}
 
-let headRequest = function(url, callback, authorization) {
-    request("HEAD", url, null, callback, authorization);
-};
+async function getRequest(url, authorization) {
+    return request("GET", url, null, authorization);
+}
 
-let postRequest = function(url, data, callback, authorization) {
-    request("POST", url, data, callback, authorization);
-};
+function headRequest(url, authorization) {
+    return request("HEAD", url, null, authorization);
+}
 
-let putRequest = function(url, data, callback, authorization) {
-    request("PUT", url, data, callback, authorization);
-};
+function postRequest(url, data, authorization) {
+    return request("POST", url, data, authorization);
+}
 
-let patchRequest = function(url, data, callback, authorization) {
-    request("PATCH", url, data, callback, authorization);
-};
+function putRequest(url, data, authorization) {
+    return request("PUT", url, data, authorization);
+}
 
-let deleteRequest = function(url, data, callback, authorization) {
-    request("DELETE", url, data, callback, authorization);
-};
+function patchRequest(url, data, authorization) {
+    return request("PATCH", url, data, authorization);
+}
+
+function deleteRequest(url, data, authorization) {
+    return request("DELETE", url, data, authorization);
+}
 
 function getQueryVariable(variable) {
     let query = window.location.search.substring(1);

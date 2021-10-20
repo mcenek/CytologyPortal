@@ -31,8 +31,8 @@ namespace segment {
 
         boost::filesystem::remove_all(image->getWriteDirectory() / "thumbnails");
 
-        json nucleiBoundaries;
-        json finalCellBoundaries;
+        //json nucleiBoundaries;
+        //json finalCellBoundaries;
         json nucleiCytoRatios;
         json thumbnails;
 
@@ -58,8 +58,8 @@ namespace segment {
 
                 image->writeImage("thumbnails/" + fileName + ".png", thumbnail);
 
-                nucleiBoundaries.push_back(contourToJson(cell->nucleusBoundary));
-                finalCellBoundaries.push_back(contourToJson(cell->finalContour));
+                //nucleiBoundaries.push_back(contourToJson(cell->nucleusBoundary));
+                //finalCellBoundaries.push_back(contourToJson(cell->finalContour));
                 nucleiCytoRatios.push_back(cell->nucleusArea / cell->phiArea);
                 thumbnails.push_back(fileName + ".png");
                 i++;
@@ -68,10 +68,18 @@ namespace segment {
 
         }
 
-        //results["nucleiBoundaries"] = nucleiBoundaries;
-        //results["cytoBoundaries"] = finalCellBoundaries;
+        vector<int> sorted(i);
+        iota(begin(v), end(v), 0);
+        sort(sorted.begin(), sorted.end(), [](int a, int b) {
+            return nucleiCytoRatios[a] - nucleiCytoRatios[b];
+        })
+
+
         results["nucleiCytoRatios"] = nucleiCytoRatios;
         results["thumbnails"] = thumbnails;
+        results["sorted"] = sorted;
+
+
 
         image->writeJSON("export.json", results);
     }

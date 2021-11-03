@@ -54,8 +54,8 @@ int main (int argc, const char * argv[])
     // GMM post processing params
     double minAreaThreshold = 1000.0;
     // MSER params
-    int delta = 3, minArea = 120, maxArea = 600;
-    double maxVariation = 0.3, minDiversity = 0.25;
+    int delta = 3, minArea = 10, maxArea = 20;
+    double maxVariation = 0.2, minDiversity = 0.3;
     double minCircularity = 0.5;
     // Cell segmentation params
     double dt = 5; //Time step

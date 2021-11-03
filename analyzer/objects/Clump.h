@@ -48,8 +48,8 @@ namespace segment {
         vector<vector<cv::Point>> undoOffsetContour();
         vector<cv::Point> undoBoundingRect(vector<cv::Point> tmpBoundaries);
         void createCells();
-        void convertNucleiBoundariesToContours();
-        void filterNuclei(double threshold = 0.5);
+        vector<vector<cv::Point>> convertNucleiBoundariesToContours(vector<vector<cv::Point>> nucleiBoundaries);
+        vector<vector<cv::Point>> filterNuclei(vector<vector<cv::Point>> nucleiBoundaries, double threshold = 0.5);
         //void generateNucleiMasks();
         cv::Mat calcClumpPrior();
         vector<vector<cv::Point>> getFinalCellContours();

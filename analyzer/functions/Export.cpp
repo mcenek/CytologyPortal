@@ -69,10 +69,10 @@ namespace segment {
         }
 
         vector<int> sorted(i);
-        iota(begin(v), end(v), 0);
-        sort(sorted.begin(), sorted.end(), [](int a, int b) {
-            return nucleiCytoRatios[a] - nucleiCytoRatios[b];
-        })
+        iota(begin(sorted), end(sorted), 0);
+        sort(sorted.begin(), sorted.end(), [nucleiCytoRatios](int a, int b) {
+            return nucleiCytoRatios[a] < nucleiCytoRatios[b];
+        });
 
 
         results["nucleiCytoRatios"] = nucleiCytoRatios;

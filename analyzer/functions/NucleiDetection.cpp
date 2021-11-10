@@ -165,7 +165,7 @@ namespace segment {
 
             vector<vector<vector<cv::Point>>> allNuclei;
             int range = 10;
-            for (int min = 0; (min + range) < contourArea; min += range) {
+            for (int min = 0; (min + range) < contourArea / 5; min += range) {
                 //MSER algorithm returns a mask of nuclei as a list of points
                 vector<vector<cv::Point>> nuclei = runMser(&clumpMat, clump->offsetContour,
                                                            delta, min, min + range, maxVariation,
@@ -178,24 +178,30 @@ namespace segment {
 
             }
 
-            int maxI = -1;
-            int maxCount = -1;
-            for (int i = 0; i < allNuclei.size(); i++) {
-                vector<vector<cv::Point>> *nuclei = &allNuclei[i];
-                cout << int(nuclei->size()) << " <= " << maxCount << ", " << (int(nuclei->size()) <= maxCount) << endl;
-                if (nuclei->size() > maxCount) {
-                    maxI = i;
-                    maxCount = nuclei->size();
-                }
-            }
-            cout << maxI << endl;
-            clump->nucleiBoundaries = allNuclei[maxI];
-            return;
+            clump->nucleiBoundaries = allNuclei[0];
 
-            int min = maxI * range;
+            int min = 0;
             int max = min + range;
+            int j = 0;
+            for (const vector<vector<cv::Point>> &nuclei : allNuclei) {
+                if (nuclei.size() > clump->nucleiBoundaries.size()) {
+                    clump->nucleiBoundaries = nuclei;
+                    min = i * range;
+                    max = min + range;
+                }
+                j++;
+            }
+
+            if (!clump->nucleiBoundaries.empty()) {
+                clump->nucleiBoundaries = clump->convertNucleiBoundariesToContours(clump->nucleiBoundaries);
+                clump->nucleiBoundaries = clump->filterNuclei(clump->nucleiBoundaries, minCircularity);
+
+            }
 
             cout << "min: " << min << " max: " << max << endl;
+            return;
+
+
 
             vector<vector<cv::Point>> nuclei = runMser(&clumpMat, clump->offsetContour,
                                                        delta, min, max, maxVariation,

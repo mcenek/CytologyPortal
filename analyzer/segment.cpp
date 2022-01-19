@@ -122,9 +122,6 @@ int main (int argc, const char * argv[])
             maxArea = vm["maxArea"].as<int>();
         }
 
-        cout << "min area: " << minArea << endl;
-        cout << "max area: " << maxArea << endl;
-
         segment::Segmenter seg = segment::Segmenter(
             vm["kernelsize"].as<int>(),
             vm["maxdist"].as<int>(),

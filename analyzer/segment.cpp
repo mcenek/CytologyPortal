@@ -54,7 +54,9 @@ int main (int argc, const char * argv[])
     // GMM post processing params
     double minAreaThreshold = 1000.0;
     // MSER params
-    int delta = 3, minArea = 10, maxArea = 20;
+    double nucleiSize = 35; // Average nuclei size in um
+    double nucleiSizeError = 10; // Nuclei size +/- error
+    int delta = 3, minArea = -1, maxArea = -1;
     double maxVariation = 0.2, minDiversity = 0.3;
     double minCircularity = 0.5;
     // Cell segmentation params
@@ -83,10 +85,13 @@ int main (int argc, const char * argv[])
           ("threshold1", value<int>()->default_value(threshold1), "Threshold1")
           ("threshold2", value<int>()->default_value(threshold2), "Threshold2")
           ("maxGmmIterations", value<int>()->default_value(maxGmmIterations), "Max GMM iterations")
+          ("nucleiSize", value<float>()->default_value(nucleiSize), "Nuclei size")
+          ("nucleiSizeError", value<float>()->default_value(nucleiSizeError), "Nuclei size error")
           ("delta", value<int>()->default_value(delta), "Delta")
           ("minArea", value<int>()->default_value(minArea), "Min area")
           ("maxArea", value<int>()->default_value(maxArea), "Max area")
           ("image,i", value<std::string>()->default_value(""), "Input image")
+          ("imageResolution", value<float>()->required(), "Image resolution pixels/μm")
           ("directory,d", value<std::string>()->default_value(""), "Input directory");
         variables_map vm;
         store(parse_command_line(argc, argv, desc), vm);
@@ -101,6 +106,25 @@ int main (int argc, const char * argv[])
 	  return 1;
 	}
 
+        int minArea, maxArea;
+
+        if (vm["minArea"].as<int>() == -1) {
+            minArea = (vm["nucleiSize"].as<float>() - vm["nucleiSizeError"].as<float>())
+                    * vm["imageResolution"].as<float>();
+        } else {
+            minArea = vm["minArea"].as<int>();
+        }
+
+        if (vm["maxArea"].as<int>() == -1) {
+            maxArea = (vm["nucleiSize"].as<float>() + vm["nucleiSizeError"].as<float>())
+                      * vm["imageResolution"].as<float>();
+        } else {
+            maxArea = vm["maxArea"].as<int>();
+        }
+
+        cout << "min area: " << minArea << endl;
+        cout << "max area: " << maxArea << endl;
+
         segment::Segmenter seg = segment::Segmenter(
             vm["kernelsize"].as<int>(),
             vm["maxdist"].as<int>(),
@@ -109,8 +133,8 @@ int main (int argc, const char * argv[])
             vm["maxGmmIterations"].as<int>(),
             vm["minAreaThreshold"].as<float>(),
             vm["delta"].as<int>(),
-            vm["minArea"].as<int>(),
-            vm["maxArea"].as<int>(),
+            minArea,
+            maxArea,
             vm["maxVariation"].as<float>(),
             vm["minDiversity"].as<float>(),
             vm["minCircularity"].as<float>(),
@@ -121,7 +145,7 @@ int main (int argc, const char * argv[])
             vm["chi"].as<float>()
         );
 
-        vector<string> images;
+        vector<boost::filesystem::path> images;
 
 	    string directory = vm["directory"].as<std::string>();
         string image = vm["image"].as<std::string>();
@@ -138,8 +162,9 @@ int main (int argc, const char * argv[])
                 BOOST_FOREACH(boost::filesystem::path const& file, make_pair(iter, eod)){
                     if (is_regular_file(file)) {
                         if (file.has_extension()) {
-                            if (file.extension().string() == ".png") {
-                                images.push_back(file.string());
+                            if (file.extension().string() == ".png" ||
+                                file.extension().string() == ".tiff") {
+                                images.push_back(file);
                             }
                         }
                     }
@@ -156,8 +181,8 @@ int main (int argc, const char * argv[])
 
         sort(images.begin(), images.end());
 
-        for (string image : images) {
-            seg.runSegmentation(image);
+        for (boost::filesystem::path const& image : images) {
+            seg.runSegmentation(image.string());
         }
 
     }

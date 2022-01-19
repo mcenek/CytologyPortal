@@ -163,55 +163,19 @@ namespace segment {
             int contourArea = (int) cv::contourArea(clump->offsetContour);
 
 
-            vector<vector<vector<cv::Point>>> allNuclei;
-            int range = 10;
-            for (int min = 0; (min + range) < contourArea / 5; min += range) {
-                //MSER algorithm returns a mask of nuclei as a list of points
-                vector<vector<cv::Point>> nuclei = runMser(&clumpMat, clump->offsetContour,
-                                                           delta, min, min + range, maxVariation,
-                                                           minDiversity, debug);
-                if (!nuclei.empty()) {
-                    nuclei = clump->convertNucleiBoundariesToContours(nuclei);
-                    nuclei = clump->filterNuclei(nuclei, minCircularity);
-                }
-                allNuclei.push_back(nuclei);
-
-            }
-
-            clump->nucleiBoundaries = allNuclei[0];
-
-            int min = 0;
-            int max = min + range;
-            int j = 0;
-            for (const vector<vector<cv::Point>> &nuclei : allNuclei) {
-                if (nuclei.size() > clump->nucleiBoundaries.size()) {
-                    clump->nucleiBoundaries = nuclei;
-                    min = i * range;
-                    max = min + range;
-                }
-                j++;
-            }
-
-            if (!clump->nucleiBoundaries.empty()) {
-                clump->nucleiBoundaries = clump->convertNucleiBoundariesToContours(clump->nucleiBoundaries);
-                clump->nucleiBoundaries = clump->filterNuclei(clump->nucleiBoundaries, minCircularity);
-
-            }
-
-            cout << "min: " << min << " max: " << max << endl;
-            return;
-
-
-
+            //MSER algorithm returns a mask of nuclei as a list of points
             vector<vector<cv::Point>> nuclei = runMser(&clumpMat, clump->offsetContour,
-                                                       delta, min, max, maxVariation,
+                                                       delta, minArea, maxArea, maxVariation,
                                                        minDiversity, debug);
             if (!nuclei.empty()) {
                 nuclei = clump->convertNucleiBoundariesToContours(nuclei);
                 nuclei = clump->filterNuclei(nuclei, minCircularity);
             }
+
             clump->nucleiBoundaries = nuclei;
-            //image->log("Clump %u, nuclei found: %lu\n", i, clump->nucleiBoundaries.size());
+
+
+            image->log("Clump %u, nuclei found: %lu\n", i, clump->nucleiBoundaries.size());
         };
 
         //Function called when thread finishes

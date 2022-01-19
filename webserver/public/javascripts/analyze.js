@@ -8,7 +8,13 @@ $(document).ready(function() {
         for (let param of $(".param")) {
             param = $(param);
             const id = param.attr("id");
+            const required = param.attr("required");
             const value = param.val().trim();
+            if (required && value === "") {
+                param.focus()
+                showSnackbar(basicSnackbar, "This field is required")
+                return
+            }
             if (isNaN(value)) {
                 param.focus()
                 showSnackbar(basicSnackbar, "Some fields are not numbers")
@@ -36,7 +42,7 @@ $(document).ready(function() {
         uploadFormData = formData;
     }
 
-   $("#analyze").click(function() {
+   $("#analyze").click(async function() {
        if (!uploadFormData || !fileName) {
            return showDialog(okDialog, locale["app_name"], locale["upload_required"]);
        }
@@ -44,14 +50,13 @@ $(document).ready(function() {
        const args = getArgs()
        if (!args) return
        const uploadLink = location.pathname + "?" + args
-       request("POST", uploadLink, uploadFormData, function(xmlHttpRequest) {
-           if (xmlHttpRequest.status === 200) {
-               location.pathname = "/portal/" + fileName;
-           } else {
-               showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
-           }
-       }, undefined, null);
+       const uploadXhr = await request("POST", uploadLink, uploadFormData);
        uploadFormData = undefined;
+       if (uploadXhr.status === 200) {
+           location.pathname = "/portal/" + fileName;
+       } else {
+           showSnackbar(basicSnackbar, uploadXhr.responseText);
+       }
    })
 
     $("#analyze-upload").click(function() {

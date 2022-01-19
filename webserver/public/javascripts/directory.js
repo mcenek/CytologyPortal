@@ -186,16 +186,15 @@ $(document).ready(function() {
         let fileLink = encodeURIComponent(files[fileId].name);
         const prompt = locale.confirm_delete.replace("{0}", fileName);
         showDialog(yesNoDialog, locale.app_name, prompt, {
-            "yes": function () {
-                deleteRequest([location.pathname, fileLink].join("/"), null, function (xmlHttpRequest) {
-                    if (xmlHttpRequest.status === 200) {
-                        folderContents.splice(fileId, 1);
-                        reload();
-                    } else {
-                        const body = locale.error_deleting.replace("{0}", fileName);
-                        showSnackbar(basicSnackbar, body);
-                    }
-                });
+            "yes": async function () {
+                const deleteXhr = await deleteRequest([location.pathname, fileLink].join("/"));
+                if (deleteXhr.status === 200) {
+                    folderContents.splice(fileId, 1);
+                    reload();
+                } else {
+                    const body = locale.error_deleting.replace("{0}", fileName);
+                    showSnackbar(basicSnackbar, body);
+                }
             }
         });
     });

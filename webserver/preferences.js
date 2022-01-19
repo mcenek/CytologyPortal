@@ -17,6 +17,7 @@ let defaultConfiguration = {
         minRatio: 0.01,
         maxRatio: 0.3,
         thumbnails_per_page: 20,
+        thumbnail_height: "100px"
     }
 
 };

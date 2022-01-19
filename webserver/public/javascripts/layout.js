@@ -53,7 +53,7 @@ $(document).ready(function() {
     });
 
 });
-function uploadFiles(files) {
+async function uploadFiles(files) {
     let formData = new FormData();
     for (let i = 0; i < files.length; i++) {
         const file = new File([files[i]], encodeURIComponent(files[i].name), {
@@ -63,9 +63,8 @@ function uploadFiles(files) {
         formData.append("file" + i, file);
     }
 
-    request("POST", location.pathname, formData, function(xmlHttpRequest) {
-        showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
-    }, undefined, null);
+    const uploadXhr = await request("POST", location.pathname, formData, undefined, null);
+    showSnackbar(basicSnackbar, uploadXhr.responseText);
 }
 
 function checkMobileResize() {

@@ -49,7 +49,7 @@ function updateCallback(xmlHttpRequest, event) {
     }
 }
 
-function updateField(event) {
+async function updateField(event) {
     let field = $(event.target);
     let key = field.attr("name");
     let value = field.val();
@@ -60,7 +60,8 @@ function updateField(event) {
     let validated = true;
 
     if (validated !== false) {
-        postRequest(location.pathname, JSON.stringify(data), (xmlHttpRequest) => {updateCallback(xmlHttpRequest, event)});
+        const uploadXhr = await postRequest(location.pathname, JSON.stringify(data));
+        updateCallback(uploadXhr, event);
     } else {
         let oldValue = preferences[key];
         field.val(oldValue);

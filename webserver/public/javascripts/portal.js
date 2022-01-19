@@ -12,7 +12,7 @@ $(document).ready(async () => {
     let logXhr = await getRequest(location.pathname + "/log.txt");
 
     parseData(JSON.parse(exportXhr.responseText))
-    showChart()
+    showChart();
     $("#info").append(logXhr.responseText.trim())
 
     initThumbnails();
@@ -129,16 +129,9 @@ function filterData() {
 function parseData(exportData) {
     nucleiCytoRatios = exportData["nucleiCytoRatios"];
     thumbnails = exportData["thumbnails"];
+    sorted = exportData["sorted"];
 
     filterData();
-
-    sorted = [...Array(thumbnails.length).keys()];
-    sorted.sort(function(first, second) {
-        return nucleiCytoRatios[first] - nucleiCytoRatios[second];
-    })
-
-
-
 
 }
 

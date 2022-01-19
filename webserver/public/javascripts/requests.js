@@ -1,5 +1,5 @@
 function request(method, url, data, authorization, contentType) {
-    if (!contentType) {
+    if (contentType === undefined) {
         contentType = "application/json";
         if (typeof data == "object") data = JSON.stringify(data);
     }
@@ -7,6 +7,11 @@ function request(method, url, data, authorization, contentType) {
     if (authorization) {
         headers["Authorization"] = authorization
     }
+    console.log(url)
+    console.log(method)
+    console.log(data)
+    console.log(headers)
+    console.log(contentType)
     return new Promise((resolve, reject) => {
         $.ajax({
             url: url,

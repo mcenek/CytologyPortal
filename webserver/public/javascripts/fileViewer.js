@@ -8,94 +8,91 @@ const pathSplit = location.pathname.split("/");
 const filePath = pathSplit[pathSplit.length - 1];
 displayName = decodeURIComponent(displayName);
 
-let requestFile = function (method, authorization, next) {
-    request(method, filePath, null, function (xmlHttpRequest) {
-        if (xmlHttpRequest.status === 200) {
-            let content = $("#content");
-            content.show();
-            if (method.toUpperCase() === "HEAD") {
-                authorized = true;
-                let extension = displayName.split(".").pop().toLowerCase();
-                let contentType = xmlHttpRequest.getResponseHeader("Content-Type");
-                if (supportedTypes.includes(extension) || contentType.startsWith("text/")) {
-                    const encodedFileName = window.location.pathname.replace(/'/g, "%27");
-                    switch (extension) {
-                        default:
-                            requestFile("GET");
-                            break;
-                        case "pdf":
-                            content.append("<object data='/pdfjs/web/viewer.html?file=" + encodeURI(encodedFileName) + "'></object>");
-                            break;
-                        case "apng": case "bmp": case "gif": case "ico": case "cur": case "jpg":
-                        case "jpeg": case "pjpeg": case "pjp": case "png": case ".svg": case "webp":
-                            content.append("<img class='mdc-elevation--z10' src='" + encodedFileName + "'>");
-                            break;
-                        case "mp3": case "m4a":
-                            let audio = new Audio(encodedFileName);
-                            audio.play();
-                            break;
-                    }
-
-                } else {
-                    content.append("<pre id='fileContents' class='selectable mdc-elevation--z10'></pre>");
-                    $("#fileContents").text(locale.cant_open_file_type);
-                    $("#fileContents").prop("contenteditable", false);
-                    hideAuthorization();
+let requestFile = async function (method, authorization, next) {
+    const fileXhr = await request(method, filePath, null, authorization);
+    if (fileXhr.status === 200) {
+        let content = $("#content");
+        content.show();
+        if (method.toUpperCase() === "HEAD") {
+            authorized = true;
+            let extension = displayName.split(".").pop().toLowerCase();
+            let contentType = fileXhr.getResponseHeader("Content-Type");
+            if (supportedTypes.includes(extension) || contentType.startsWith("text/")) {
+                const encodedFileName = window.location.pathname.replace(/'/g, "%27");
+                switch (extension) {
+                    default:
+                        await requestFile("GET");
+                        break;
+                    case "pdf":
+                        content.append("<object data='/pdfjs/web/viewer.html?file=" + encodeURI(encodedFileName) + "'></object>");
+                        break;
+                    case "apng": case "bmp": case "gif": case "ico": case "cur": case "jpg":
+                    case "jpeg": case "pjpeg": case "pjp": case "png": case ".svg": case "webp":
+                        content.append("<img class='mdc-elevation--z10' src='" + encodedFileName + "'>");
+                        break;
+                    case "mp3": case "m4a":
+                        let audio = new Audio(encodedFileName);
+                        audio.play();
+                        break;
                 }
-            }
-            if (method.toUpperCase() === "GET") {
+
+            } else {
                 content.append("<pre id='fileContents' class='selectable mdc-elevation--z10'></pre>");
-                $("#fileContents").text(xmlHttpRequest.responseText);
-                $("#edit").show();
+                $("#fileContents").text(locale.cant_open_file_type);
+                $("#fileContents").prop("contenteditable", false);
                 hideAuthorization();
             }
-
-        } else if (xmlHttpRequest.status === 401 || xmlHttpRequest.status === 403) {
-            showAuthorization();
-            if (authorization !== undefined) {
-                $("#message").text(locale.incorrect_password);
-                $("#password").val("");
-            }
-        } else if (xmlHttpRequest.status === 0) {
-            $("#message").text(locale.no_connection);
         }
-        if (typeof next === "function") next(true);
-    }, authorization);
-};
+        if (method.toUpperCase() === "GET") {
+            content.append("<pre id='fileContents' class='selectable mdc-elevation--z10'></pre>");
+            $("#fileContents").text(fileXhr.responseText);
+            $("#edit").show();
+            hideAuthorization();
+        }
 
-var save = function () {
+    } else if (fileXhr.status === 401 || fileXhr.status === 403) {
+        showAuthorization();
+        if (authorization !== undefined) {
+            $("#message").text(locale.incorrect_password);
+            $("#password").val("");
+        }
+    } else if (fileXhr.status === 0) {
+        $("#message").text(locale.no_connection);
+    }
+    if (typeof next === "function") next(true);
+}
+
+var save = async function () {
     const newFileContents = $("#fileContents").text();
     const blob = new Blob([newFileContents]);
     const file = new File([blob], filePath)
     const formData = new FormData();
     formData.append('data', file);
 
-    request("PUT", filePath, formData, function (xmlHttpRequest) {
-        if (xmlHttpRequest.status === 200) {
-            showSnackbar(basicSnackbar, xmlHttpRequest.responseText);
-        }
-    }, undefined, null);
-};
+    const saveXhr = await request("PUT", filePath, formData, undefined, null);
+    if (saveXhr.status === 200) {
+        showSnackbar(basicSnackbar, saveXhr.responseText);
+    }
+}
 
 var revert = function(event) {
     $("#fileContents").text(event.data.initialFileContents);
 };
 
-var deleteFile = function () {
+var deleteFile = async function () {
     if (window.location.pathname.startsWith("/shared")) return;
     const prompt = locale.confirm_delete.replace("{0}", displayName);
     showDialog(yesNoDialog, locale.app_name, prompt, {
-        "yes": function () {
-            deleteRequest(filePath, null, function (xmlHttpRequest) {
-                if (xmlHttpRequest.status === 200) {
-                    window.location.href = '.';
-                } else {
-                    const body = locale.error_deleting.replace("{0}", fileName);
-                    showSnackbar(basicSnackbar, body);
-                }
-            });
+        "yes": async function () {
+            const deleteXhr = await deleteRequest(filePath, null);
+            if (deleteXhr.status === 200) {
+                window.location.href = '.';
+            } else {
+                const body = locale.error_deleting.replace("{0}", fileName);
+                showSnackbar(basicSnackbar, body);
+            }
         }
-    });
+    })
 };
 
 var edit = function () {
@@ -105,10 +102,10 @@ var edit = function () {
 
     let mode = $("#edit").find("i").text();
     if (mode === "save") {
-        if (fileContents !== oldFileContents) save();
         $("#fileContents").prop("contenteditable", false);
         $("#edit").find("i").text("edit");
         $("#edit").find("span").text(locale.edit);
+        if (fileContents !== oldFileContents) save();
     } else {
         oldFileContents = fileContents;
         $("#fileContents").prop("contenteditable", true);

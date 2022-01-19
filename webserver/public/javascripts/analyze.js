@@ -11,19 +11,19 @@ $(document).ready(function() {
             const required = param.attr("required");
             const value = param.val().trim();
             if (required && value === "") {
-                param.focus()
-                showSnackbar(basicSnackbar, "This field is required")
-                return
+                param.focus();
+                showSnackbar(basicSnackbar, locale["required_field"]);
+                return;
             }
             if (isNaN(value)) {
-                param.focus()
-                showSnackbar(basicSnackbar, "Some fields are not numbers")
-                return
+                param.focus();
+                showSnackbar(basicSnackbar, locale["field_not_numerical"]);
+                return;
             }
-            args += `${id}=${value}&`
+            args += `${id}=${value}&`;
         }
-        args = args.slice(0, -1)
-        return args
+        args = args.slice(0, -1);
+        return args;
     }
 
 

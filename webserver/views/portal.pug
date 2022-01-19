@@ -9,8 +9,6 @@ block header
     script(type='text/javascript', src='/javascripts/portal.js')
 
 block content
-
-
     div#loading
         div#loader
             div.lds-roller
@@ -74,4 +72,7 @@ block drawer
                 a.mdc-list-item(href='/analyze')
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') file_upload
                     span.mdc-list-item__text= locale.upload
+                a.mdc-list-item(href='/preferences')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') settings
+                    span.mdc-list-item__text= locale.preferences
 

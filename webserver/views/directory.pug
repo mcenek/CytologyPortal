@@ -29,12 +29,13 @@ block drawer
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') delete
                     span.mdc-list-item__text= locale.trash
                 .mdc-list-divider
+                a.mdc-list-item(href='/preferences')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') settings
+                    span.mdc-list-item__text= locale.preferences
                 a.mdc-list-item(href='.')#back
                     i.material-icons.mdc-list-item__graphic(aria-hidden='true') arrow_back
                     span.mdc-list-item__text= locale.back
-                a.mdc-list-item#logout
-                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') launch
-                    span.mdc-list-item__text= locale.logout
+
 
 block content
     table#navigation-bar-table
@@ -44,19 +45,9 @@ block content
                 button#path-overflow(hidden style='font-size: 15px; margin-top: 7px; margin-left: 5px; border: none; outline: none; background-color: transparent')
                     h4 ...
 
-
-
-    //h2(style='margin-bottom: 3px;') #{directory.path}
     table#files
         tr.underlinedTR
             td.first-column
-
-                //.mdc-checkbox#select-all
-                    input.mdc-checkbox__native-control(type='checkbox')
-                    .mdc-checkbox__background
-                        svg.mdc-checkbox__checkmark(viewBox='0 0 24 24')
-                            path.mdc-checkbox__checkmark-path(fill='none', d='M1.73,12.91 8.1,19.28 22.79,4.59')
-                        .mdc-checkbox__mixedmark
 
             td
                 h4= locale.name
@@ -64,5 +55,3 @@ block content
                 h4= locale.size
             td
                 h4= locale.modified
-
-    //h3#computername.mdc-typography.mdc-typography--subtitle2(style='margin-top: 0; margin-bottom:5px')= hostname

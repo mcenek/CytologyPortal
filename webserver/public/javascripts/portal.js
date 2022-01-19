@@ -97,11 +97,11 @@ function displayThumbnails(page) {
     }
     $(".good_segmentation").click(function() {
         $(this).prop("disabled", true)
-        showSnackbar(basicSnackbar, "Thanks for the feedback!")
+        showSnackbar(basicSnackbar, locale["thanks_feedback"])
     })
     $(".bad_segmentation").click(function() {
         $(this).prop("disabled", true)
-        showSnackbar(basicSnackbar, "Thanks for the feedback!")
+        showSnackbar(basicSnackbar, locale["thanks_feedback"])
     })
     const shownLabel = "Shown Thumbnails";
     if (myChart.data.datasets[0].label === shownLabel) {
@@ -156,7 +156,7 @@ function showChart() {
         type: 'scatter',
         data: {
             datasets: [{
-                label: 'Cyto to Nuclei Ratios',
+                label: locale["cyto_to_nuclei_ratios"],
                 data: chart_data,
                 backgroundColor: 'rgb(255, 99, 132)'
             }],

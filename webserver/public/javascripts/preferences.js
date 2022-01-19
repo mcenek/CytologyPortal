@@ -1,7 +1,7 @@
 let preferenceFieldValues;
 
 $(document).ready(function() {
-    if (!preferences) return showSnackbar(basicSnackbar, "Preferences error");
+    if (!preferences) return showSnackbar(basicSnackbar, locale["preferences_error"]);
     let table = $("#preferences").find("tbody");
     let tableRows = $("#preferences").find("tr:not(.first-row)");
     tableRows.remove();
@@ -28,14 +28,14 @@ $(document).keypress(function(e) {
 function getPrefenecesRowHTML(key, value) {
     let html = `<tr name=${key}>` +
         `<td><input class='key preferences first-column' disabled name=${key} type='text' autocomplete='off' autocapitalize='none' value='${key}''></td>` +
-        `<td><input class='value preferences' name=${key} type='text' autocomplete='off' autocapitalize='none' value='${value}' placeholder='${"No value"}'></td>` +
+        `<td><input class='value preferences' name=${key} type='text' autocomplete='off' autocapitalize='none' value='${value}' placeholder='${locale["no_value"]}'></td>` +
         `</tr>`;
     return html;
 }
 
 function updateCallback(xmlHttpRequest, event) {
     if (xmlHttpRequest.status === 0) {
-        showDialog(okDialog, locale.app_name, locale.session_expired, {
+        showDialog(okDialog, locale["app_name"], locale["session_expired"], {
             "close": function () {
                 location.reload()
             }

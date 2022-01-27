@@ -2,9 +2,6 @@
 #include "InitialCellSegmentation.h"
 #include "SegmenterTools.h"
 #include "../objects/ClumpsThread.h"
-#include <thread>
-#include <future>
-#include <chrono>
 
 using namespace std;
 
@@ -823,7 +820,7 @@ namespace segment {
             }
         };
 
-        int maxThreads = 32;
+        int maxThreads = 16;
         ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 
         //Save all remaining cell boundaries and neighbors to JSON file

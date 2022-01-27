@@ -139,9 +139,11 @@ namespace segment {
 
     cv::Mat Image::getNucleiBoundaries() {
         cv::Mat img = this->mat.clone();
+        cv::RNG rng(12345);
         for (int i = 0; i < this->clumps.size(); i++) {
             Clump *clump = &this->clumps[i];
-            cv::drawContours(img, clump->undoOffsetContour(), -1, 0, 1);
+            vector<vector<cv::Point>> contours = clump->undoOffsetContour();
+            drawColoredContours(&img, &contours, &rng);
         }
         return img;
     }

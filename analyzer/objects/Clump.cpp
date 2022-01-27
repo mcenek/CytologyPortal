@@ -148,21 +148,21 @@ namespace segment {
     /*
      * convertNucleiBoundariesToContours takes a mask of nuclei boundaries and converts them to contours
      */
-    void Clump::convertNucleiBoundariesToContours() {
-        if(this->nucleiBoundaries.empty())
-            cerr << "nucleiBoundaries must be defined and present before Clump::convertNucleiBoundariesToContours can be run." << "\n";
+    vector<vector<cv::Point>> Clump::convertNucleiBoundariesToContours(vector<vector<cv::Point>> nucleiBoundaries) {
+        vector<vector<cv::Point>> nucleiContours;
         cv::Mat regionMask = cv::Mat::zeros(this->boundingRect.height, this->boundingRect.width, CV_8U);
-        cv::drawContours(regionMask, this->nucleiBoundaries, -1, cv::Scalar(1.0));
-        cv::findContours(regionMask, this->nucleiBoundaries, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        cv::drawContours(regionMask, nucleiBoundaries, -1, cv::Scalar(1.0));
+        cv::findContours(regionMask, nucleiContours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        return nucleiContours;
     }
 
     /*
      * filterNuclei filters nuclei above a specified circularity
      */
-    void Clump::filterNuclei(double minCircularity) {
+    vector<vector<cv::Point>> Clump::filterNuclei(vector<vector<cv::Point>> nucleiBoundaries, double minCircularity) {
         vector<vector<cv::Point>> filteredNuclei;
-        for (int i = 0; i < this->nucleiBoundaries.size(); i++) {
-            vector<cv::Point> *nucleus = &this->nucleiBoundaries[i];
+        for (int i = 0; i < nucleiBoundaries.size(); i++) {
+            vector<cv::Point> *nucleus = &nucleiBoundaries[i];
             double area = cv::contourArea(*nucleus);
             double perimeter = cv::arcLength(*nucleus, true);
             double circularity = 4 * M_PI * area / pow(perimeter, 2.0);
@@ -170,7 +170,7 @@ namespace segment {
                 filteredNuclei.push_back(*nucleus);
             }
         }
-        this->nucleiBoundaries = filteredNuclei;
+        return filteredNuclei;
     }
 
     /*

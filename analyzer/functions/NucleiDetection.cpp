@@ -140,6 +140,7 @@ namespace segment {
 
     }
 
+
     /*
      * runNucleiDetection is the main function that finds the nuclei boundaries for the image
      * This function spawns multiple threads for each clump that finds the nuclei boundaries.
@@ -159,16 +160,22 @@ namespace segment {
                 return;
             }
             cv::Mat clumpMat = clump->extract();
+            int contourArea = (int) cv::contourArea(clump->offsetContour);
+
+
             //MSER algorithm returns a mask of nuclei as a list of points
             vector<vector<cv::Point>> nuclei = runMser(&clumpMat, clump->offsetContour,
                                                        delta, minArea, maxArea, maxVariation,
                                                        minDiversity, debug);
-            clump->nucleiBoundaries = nuclei;
-            if (clump->nucleiBoundaries.size() > 0) {
-                clump->convertNucleiBoundariesToContours();
-                clump->filterNuclei(minCircularity);
+            if (!nuclei.empty()) {
+                nuclei = clump->convertNucleiBoundariesToContours(nuclei);
+                nuclei = clump->filterNuclei(nuclei, minCircularity);
             }
-            //image->log("Clump %u, nuclei found: %lu\n", i, clump->nucleiBoundaries.size());
+
+            clump->nucleiBoundaries = nuclei;
+
+
+            image->log("Clump %u, nuclei found: %lu\n", i, clump->nucleiBoundaries.size());
         };
 
         //Function called when thread finishes
@@ -178,7 +185,7 @@ namespace segment {
             }
         };
 
-        int maxThreads = 4;
+        int maxThreads = 16;
         ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 
         //DEBUG: Print the first and second clumps with the most nuclei

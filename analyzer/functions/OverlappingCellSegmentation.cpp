@@ -66,7 +66,7 @@ namespace segment {
                 // Update phi per DRLSE
                 drlse::updatePhi(cellI, clump, dt, epsilon, mu, kappa, chi);
 
-                cout << "LSF Iteration " << i << ": Clump " << clumpIdx << ", Cell " << cellIdxI << endl;
+                //cout << "LSF Iteration " << i << ": Clump " << clumpIdx << ", Cell " << cellIdxI << endl;
 
                 // Check every 50 iterations if the cell has converged
                 if (i != 0 && i % 50 == 0) {
@@ -116,11 +116,12 @@ namespace segment {
             Clump *clump = &(*clumps)[clumpIdx];
             json jsonClumpContours = finalCellBoundaries[clumpIdx];
             if (jsonClumpContours == nullptr) continue;
+
             int jsonNumberCells = finalCellBoundaries[clumpIdx].size();
             for (int cellIdx = 0; cellIdx < jsonNumberCells; cellIdx++) {
                 json jsonCellContour = finalCellBoundaries[clumpIdx][cellIdx];
                 // Will not load incomplete clumps
-                if (jsonCellContour == nullptr) break;
+                if (jsonCellContour == nullptr) continue;
                 vector<cv::Point> contour;
                 for (json &jsonPoint : jsonCellContour) {
                     int x = jsonPoint[0];
@@ -176,11 +177,12 @@ namespace segment {
             }
         };
 
-        int maxThreads = 8;
+        int maxThreads = 16;
         // Spawns threads that run the thread function for each clump
         ClumpsThread(maxThreads, clumps, threadFunction, threadDoneFunction);
 
         image->writeJSON("finalCellBoundaries", finalCellBoundaries);
+        image->writeJSON("nucleiCytoRatios", nucleiCytoRatios);
     }
 
 }

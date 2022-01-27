@@ -18,19 +18,23 @@ namespace segment {
 
     }
 
+    json contourToJson(vector<cv::Point> contour) {
+        json converted;
+        for (cv::Point &point : contour) {
+            converted.push_back({point.x, point.y});
+        }
+        return converted;
+    }
+
     void exportResults(Image *image) {
         json results;
 
-        json nucleiBoundaries = image->loadJSON("nucleiBoundaries");
-        results["nucleiBoundaries"] = removeClumpArrays(nucleiBoundaries);
+        boost::filesystem::remove_all(image->getWriteDirectory() / "thumbnails");
 
-        json finalCellBoundaries = image->loadJSON("finalCellBoundaries");
-        results["cytoBoundaries"] = removeClumpArrays(finalCellBoundaries);
-
-        json nucleiCytoRatios = image->loadJSON("nucleiCytoRatios");
-        results["nucleiCytoRatios"] = removeClumpArrays(nucleiCytoRatios);
-
-        boost::filesystem::remove_all(image->getWriteDirectory() / "exports" / "thumbnails");
+        //json nucleiBoundaries;
+        //json finalCellBoundaries;
+        json nucleiCytoRatios;
+        json thumbnails;
 
         int i = 0;
         for (int clumpIdx = 0; clumpIdx < image->clumps.size(); clumpIdx++) {
@@ -40,23 +44,43 @@ namespace segment {
             for (int cellIdx = 0; cellIdx < clump->cells.size(); cellIdx++) {
                 Cell *cell = &clump->cells[cellIdx];
                 cv::Mat thumbnail = clumpMat.clone();
+                if (cell->finalContour.empty() || cell->nucleusBoundary.empty()) {
+                    continue;
+                }
+
                 cv::drawContours(thumbnail, vector<vector<cv::Point>>{cell->finalContour}, 0, cv::Scalar(255, 0, 0), 2);
                 cv::drawContours(thumbnail, vector<vector<cv::Point>>{cell->nucleusBoundary}, 0, cv::Scalar(0, 0, 255), 2);
 
-                cv::Rect cellBounding = cv::boundingRect(cell->cytoBoundary);
-                thumbnail = thumbnail(cellBounding);
+                thumbnail = thumbnail(cell->boundingBoxWithNeighbors);
                 string fileName = to_string(i);
                 fileName += "_" + to_string((int) round(cell->phiArea));
                 fileName += "_" + to_string((int) round(cell->nucleusArea));
-                cout << fileName << endl;
-                image->writeImage("exports/thumbnails/" + fileName, thumbnail);
+
+                image->writeImage("thumbnails/" + fileName + ".png", thumbnail);
+
+                //nucleiBoundaries.push_back(contourToJson(cell->nucleusBoundary));
+                //finalCellBoundaries.push_back(contourToJson(cell->finalContour));
+                nucleiCytoRatios.push_back(cell->nucleusArea / cell->phiArea);
+                thumbnails.push_back(fileName + ".png");
                 i++;
 
             }
 
         }
 
+        vector<int> sorted(i);
+        iota(begin(sorted), end(sorted), 0);
+        sort(sorted.begin(), sorted.end(), [nucleiCytoRatios](int a, int b) {
+            return nucleiCytoRatios[a] < nucleiCytoRatios[b];
+        });
 
-        image->writeJSON("exports/export.json", results);
+
+        results["nucleiCytoRatios"] = nucleiCytoRatios;
+        results["thumbnails"] = thumbnails;
+        results["sorted"] = sorted;
+
+
+
+        image->writeJSON("export.json", results);
     }
 }

@@ -1,0 +1,33 @@
+extends layout
+
+block header
+    link(rel='stylesheet', type='text/css', href='/stylesheets/preferences.css')
+    script.
+        let preferences = !{JSON.stringify(preferences)};
+    script(type='text/javascript', src='/javascripts/preferences.js')
+
+block content
+    table#preferences
+        tbody#preferences-table
+            tr#preferences_input.first-row
+                td
+                    h4.first-column= locale.key
+                td
+                    h4= locale.value
+
+block drawer
+    aside.mdc-drawer.mdc-top-app-bar--fixed-adjust.mdc-drawer--modal
+        .mdc-drawer__header
+            h3.mdc-drawer__title= locale.web_portal
+        .mdc-drawer__content
+            nav.mdc-list
+                a.mdc-list-item(href='/portal')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
+                    span.mdc-list-item__text= locale.files
+                a.mdc-list-item(href='/analyze')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') file_upload
+                    span.mdc-list-item__text= locale.upload
+                a.mdc-list-item.mdc-list-item--activated(href='/preferences')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') settings
+                    span.mdc-list-item__text= locale.preferences
+

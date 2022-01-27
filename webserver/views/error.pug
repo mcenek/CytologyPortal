@@ -1,0 +1,11 @@
+extends layout
+
+block header
+    link(rel='stylesheet', type='text/css', href='/stylesheets/error.css')
+
+block content
+    .box.mdc-elevation--z8
+        h2#title.mdc-typography.mdc-typography--headline4= locale.app_name
+        p#message Error #{status} - #{message}
+        br
+        br

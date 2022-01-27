@@ -1,0 +1,57 @@
+extends layout
+
+block header
+    link(rel='stylesheet', type='text/css', href='/stylesheets/directory.css')
+    script.
+        let folderContents = !{JSON.stringify(files)};
+        let path = !{JSON.stringify(path)};
+        let path_decrypted = "#{path_decrypted}";
+        let baseUrl = "#{baseUrl}";
+    script(type='text/javascript', src= "/javascripts/directory.js")
+
+
+block drawer
+    aside.mdc-drawer.mdc-top-app-bar--fixed-adjust.mdc-drawer--modal
+        .mdc-drawer__content
+            .mdc-drawer__header
+                h3.mdc-drawer__title
+            nav.mdc-list
+                a.mdc-list-item.mdc-list-item--activated(href=baseUrl)#file-manager
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
+                    span.mdc-list-item__text= locale.files
+                a.mdc-list-item(href="/analyze")
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') file_upload
+                    span.mdc-list-item__text= locale.upload
+                a.mdc-list-item#download-current-dir
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') file_download
+                    span.mdc-list-item__text= locale.download
+                a.mdc-list-item(href=baseUrl + "/.recycle")
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') delete
+                    span.mdc-list-item__text= locale.trash
+                .mdc-list-divider
+                a.mdc-list-item(href='/preferences')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') settings
+                    span.mdc-list-item__text= locale.preferences
+                a.mdc-list-item(href='.')#back
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') arrow_back
+                    span.mdc-list-item__text= locale.back
+
+
+block content
+    table#navigation-bar-table
+        tr#navigation-bar
+            td
+                button#home.material-icons(onclick = "window.location = baseUrl" style="background-color: transparent; border: none; outline: none") home
+                button#path-overflow(hidden style='font-size: 15px; margin-top: 7px; margin-left: 5px; border: none; outline: none; background-color: transparent')
+                    h4 ...
+
+    table#files
+        tr.underlinedTR
+            td.first-column
+
+            td
+                h4= locale.name
+            td
+                h4= locale.size
+            td
+                h4= locale.modified

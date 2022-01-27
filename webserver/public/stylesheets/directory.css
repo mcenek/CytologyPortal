@@ -1,0 +1,74 @@
+#frame {
+    border-radius: 5px;
+    width: 80%;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 3%;
+    top: 10%;
+    margin: auto;
+    padding: 20px 20px 35px 20px;
+}
+
+@media (max-height: 764px) {
+    #frame {
+        height: 75%;
+    }
+}
+
+@media (max-height: 600px) {
+    #frame {
+        height: 70%;
+    }
+}
+
+#home {
+    margin-top: 10px;
+    margin-left: 12px;
+}
+
+#select-all {
+    margin-left: 10px;
+    margin-bottom: 2px;
+}
+
+#navigation-bar-table {
+    width: 100%;
+    overflow: scroll;
+    padding-top: 5px;
+    margin-top: 10px;
+    border-collapse: collapse;
+    display:table-row;
+}
+
+#files {
+    width: 100%;
+    overflow: scroll;
+    padding-top: 5px;
+    margin-top: 10px;
+    border-collapse: collapse;
+}
+
+.underlinedTR {
+    border-bottom: 1px solid darkgray;
+
+}
+
+h4 {
+    margin: 0;
+}
+
+.first-column {
+    margin-left: 5px;
+    width: 60px;
+}
+
+.file-icons {
+    margin-left: 20px;
+    margin-top: 5px;
+    color: gray;
+}
+
+#path-overflow-menu{
+    margin-top: 30px;
+}

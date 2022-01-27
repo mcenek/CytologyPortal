@@ -1,0 +1,50 @@
+extends layout
+
+block header
+    link(rel='stylesheet', type='text/css', href='/stylesheets/fileViewer.css')
+    script.
+        let displayName = "#{displayName}";
+    script(type='text/javascript', src= "/javascripts/fileViewer.js")
+
+block drawer
+    aside.mdc-drawer.mdc-top-app-bar--fixed-adjust.mdc-drawer--modal
+        .mdc-drawer__header
+            h3.mdc-drawer__title
+        .mdc-drawer__content
+            nav.mdc-list
+                a.mdc-list-item.mdc-list-item--activated#file-manager(href='/files')
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') folder
+                    span.mdc-list-item__text= locale.files
+                a.mdc-list-item#edit(style="display:none")
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') edit
+                    span.mdc-list-item__text= locale.edit
+                a.mdc-list-item#download
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') cloud_download
+                    span.mdc-list-item__text= locale.download
+                a.mdc-list-item#delete
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') delete
+                    span.mdc-list-item__text= locale.delete
+                .mdc-list-divider
+                a.mdc-list-item(href='.')#back
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') arrow_back
+                    span.mdc-list-item__text= locale.back
+                a.mdc-list-item#logout
+                    i.material-icons.mdc-list-item__graphic(aria-hidden='true') launch
+                    span.mdc-list-item__text= locale.logout
+
+block content
+    div#content(hidden)
+    #authorization.box.mdc-card.mdc-elevation--z8(style="display: none")
+        #title.demo-card__title.mdc-typography.mdc-typography--headline4= locale.password_required
+        br
+        .mdc-text-field
+            input#password.mdc-text-field__input(type='password' tabindex=1)
+            .mdc-line-ripple
+            label.mdc-floating-label= locale.password
+        p#message
+        button#submit.mdc-button.mdc-button--raised= locale.submit
+
+
+
+
+    

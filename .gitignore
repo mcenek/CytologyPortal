@@ -1,12 +1,6 @@
-﻿################################################################################
-# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
-################################################################################
-
-/cytology-portal/Content/Images/
 *.suo
 *.ide
 obj/
-[Bb]in
 [Dd]ebug*/
 [Rr]elease*/
 images
